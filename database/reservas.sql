@@ -1,4 +1,4 @@
--- Active: 1792171317899@@127.0.0.1@3306@reservas
+-- Active: 1792256761628@@127.0.0.1@3306@reservas
 -- ==================================================
 -- PROYECTO: RESERVAS DE ALOJAMIENTO
 -- Creación de estructura y datos de ejemplo
@@ -279,3 +279,31 @@ SHOW TABLES;
 DESCRIBE reserva;
 
 DESCRIBE reserva_evento;
+
+SELECT * FROM reserva;
+
+SELECT * FROM reserva_evento;
+
+
+SELECT r.id, r.nombre_huesped, r.estado, COUNT(e.id) AS total_eventos
+FROM reserva r
+LEFT JOIN reserva_evento e ON e.reserva_id = r.id
+GROUP BY r.id, r.nombre_huesped, r.estado
+ORDER BY r.id;
+
+
+
+-- Creacion de un usuario específico para la aplicación de reservas con permisos limitados
+CREATE USER IF NOT EXISTS 'reservas_app'@'localhost'
+IDENTIFIED BY 'pruebas';
+
+GRANT SELECT, INSERT, UPDATE
+ON reservas.*
+TO 'reservas_app'@'localhost';
+
+FLUSH PRIVILEGES;
+
+-- Para recibir el resultado deseado hay que cambiar la conexión activa
+SELECT DATABASE(), CURRENT_USER();
+
+
