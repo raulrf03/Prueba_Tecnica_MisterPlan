@@ -33,3 +33,9 @@ Si falta el pdo_mysql, descomentar la linea correspondiente en el .ini
 ```bash
 composer install
 ```
+
+## Iniciar el servidor / alternativa:usar php server
+
+```bash
+php -S localhost:8000 -t public
+```
