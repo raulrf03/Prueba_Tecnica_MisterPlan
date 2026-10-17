@@ -34,8 +34,42 @@ Si falta el pdo_mysql, descomentar la linea correspondiente en el .ini
 composer install
 ```
 
-## Iniciar el servidor / alternativa:usar php server
+## Definir las variables de entorno (powershell) o archivo .env
 
 ```bash
+$env:DB_HOST = "127.0.0.1"
+$env:DB_PORT = "3306"
+$env:DB_NAME = "reservas"
+$env:DB_USER = "reservas_app"
+$env:DB_PASSWORD = "pruebas"
+```
+
 php -S localhost:8000 -t public
+
+## Iniciar el servidor / alternativa: usar php server
+
+```bash
+php -S localhost:8000 -t public server.php   
+```
+
+## Ejecutar los tests
+
+### Smoke tests
+
+```bash
+php tests/Smoke/DatabaseSmoke.php 
+```
+
+```bash
+php tests/Smoke/InputValidatorSmoke.php 
+```
+
+### Unit tests
+
+```bash
+php tests/Unit/DatabaseTest.php 
+```
+
+```bash
+php tests/Unit/InputValidatorTest.php 
 ```
