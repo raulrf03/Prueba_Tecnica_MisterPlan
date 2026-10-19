@@ -1,0 +1,10 @@
+{
+  "nombre_huesped": "Prueba API",
+  "email_huesped": "prueba@example.com",
+  "alojamiento": "Apartamento Vista Mar",
+  "fecha_entrada": "2027-02-01",
+  "fecha_salida": "2027-02-05",
+  "num_personas": 2,
+  "importe_total": 300,
+  "notas": "Reserva creada desde la API"
+}

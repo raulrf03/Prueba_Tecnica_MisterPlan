@@ -1,0 +1,271 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Database\Database;
+use DateTimeImmutable;
+use PDO;
+use Throwable;
+
+final class ReservaRepository
+{
+  private PDO $conexion;
+
+  /** Permite inyectar una conexión en pruebas; en producción usa la conexión compartida. */
+  public function __construct(?PDO $conexion = null)
+  {
+    $this->conexion = $conexion ?? Database::getConnection();
+  }
+
+  /** Recupera todas las reservas ordenadas por fecha de entrada e identificador. */
+  public function obtenerTodas(): array
+  {
+    $sentencia = $this->conexion->prepare(
+      'SELECT id, nombre_huesped, email_huesped, alojamiento,
+                    fecha_entrada, fecha_salida, num_personas,
+                    importe_total, estado, notas, fecha_creacion
+            FROM reserva
+            ORDER BY fecha_entrada ASC, id ASC'
+    );
+
+    $sentencia->execute();
+
+    return $sentencia->fetchAll();
+  }
+
+  /** Devuelve el número total de reservas registradas. */
+  public function contarTodas(): int
+  {
+    $sentencia = $this->conexion->query('SELECT COUNT(*) AS total FROM reserva');
+
+    $resultado = $sentencia->fetch();
+
+    return (int) ($resultado['total'] ?? 0);
+  }
+
+  /** Busca una reserva por ID; devuelve null si no existe. */
+  public function obtenerPorId(int $id): ?array
+  {
+    $sentencia = $this->conexion->prepare(
+      'SELECT id, nombre_huesped, email_huesped, alojamiento,
+                    fecha_entrada, fecha_salida, num_personas,
+                    importe_total, estado, notas, fecha_creacion
+            FROM reserva
+            WHERE id = :id'
+    );
+
+    $sentencia->execute(['id' => $id]);
+
+    $reserva = $sentencia->fetch();
+
+    return $reserva === false ? null : $reserva;
+  }
+
+  /** Recupera el historial de eventos de una reserva en orden cronológico. */
+  public function obtenerEventosPorReservaId(int $id): array
+  {
+    $sentencia = $this->conexion->prepare(
+      'SELECT id, reserva_id, tipo_evento, descripcion, fecha_evento
+            FROM reserva_evento
+            WHERE reserva_id = :id
+            ORDER BY fecha_evento ASC, id ASC'
+    );
+
+    $sentencia->execute(['id' => $id]);
+
+    return $sentencia->fetchAll();
+  }
+
+  /**
+   * Aplica únicamente los filtros proporcionados y enlaza sus valores como parámetros.
+   */
+  public function buscar(array $filtros): array
+  {
+    $condiciones = [];
+    $parametros = [];
+
+    if (isset($filtros['estado'])) {
+      $condiciones[] = 'estado = :estado';
+      $parametros['estado'] = $filtros['estado'];
+    }
+
+    if (isset($filtros['fecha_desde'])) {
+      $condiciones[] = 'fecha_entrada >= :fecha_desde';
+      $parametros['fecha_desde'] = $filtros['fecha_desde'];
+    }
+
+    if (isset($filtros['fecha_hasta'])) {
+      $condiciones[] = 'fecha_entrada <= :fecha_hasta';
+      $parametros['fecha_hasta'] = $filtros['fecha_hasta'];
+    }
+
+    if (isset($filtros['huesped'])) {
+      $condiciones[] = 'nombre_huesped LIKE :huesped';
+      $parametros['huesped'] = '%' . $filtros['huesped'] . '%';
+    }
+
+    $sql = 'SELECT id, nombre_huesped, email_huesped, alojamiento,
+                      fecha_entrada, fecha_salida, num_personas,
+                      importe_total, estado, notas, fecha_creacion
+                FROM reserva';
+
+    if ($condiciones !== []) {
+      $sql .= ' WHERE ' . implode(' AND ', $condiciones);
+    }
+
+    $sql .= ' ORDER BY fecha_entrada ASC, id ASC';
+
+    $sentencia = $this->conexion->prepare($sql);
+    $sentencia->execute($parametros);
+
+    return $sentencia->fetchAll();
+  }
+
+  /** Guarda la reserva y su evento de creación como una única operación. */
+  public function crear(array $datos): int
+  {
+    $this->conexion->beginTransaction();
+
+    try {
+      $sentencia = $this->conexion->prepare(
+        'INSERT INTO reserva (
+                    nombre_huesped,
+                    email_huesped,
+                    alojamiento,
+                    fecha_entrada,
+                    fecha_salida,
+                    num_personas,
+                    importe_total,
+                    estado,
+                    notas,
+                    fecha_creacion
+                ) VALUES (
+                    :nombre_huesped,
+                    :email_huesped,
+                    :alojamiento,
+                    :fecha_entrada,
+                    :fecha_salida,
+                    :num_personas,
+                    :importe_total,
+                    :estado,
+                    :notas,
+                    :fecha_creacion
+                )'
+      );
+
+      $sentencia->execute([
+        'nombre_huesped' => $datos['nombre_huesped'],
+        'email_huesped' => $datos['email_huesped'],
+        'alojamiento' => $datos['alojamiento'],
+        'fecha_entrada' => $datos['fecha_entrada'],
+        'fecha_salida' => $datos['fecha_salida'],
+        'num_personas' => $datos['num_personas'],
+        'importe_total' => $datos['importe_total'],
+        'estado' => $datos['estado'],
+        'notas' => $datos['notas'],
+        'fecha_creacion' => $datos['fecha_creacion'],
+      ]);
+
+      $reservaId = (int) $this->conexion->lastInsertId();
+
+      $this->registrarEvento(
+        $reservaId,
+        'creacion',
+        'Reserva creada por ' . $datos['nombre_huesped'] . '.',
+        $datos['fecha_creacion']
+      );
+
+      $this->conexion->commit();
+
+      return $reservaId;
+    } catch (Throwable $e) {
+      // Evita conservar una reserva sin su evento si cualquiera de las escrituras falla.
+      $this->conexion->rollBack();
+
+      throw $e;
+    }
+  }
+
+  /** Actualiza el estado y registra el cambio; devuelve null si la reserva no existe. */
+  public function cambiarEstado(int $id, string $nuevoEstado): ?array
+  {
+    $reserva = $this->obtenerPorId($id);
+
+    if ($reserva === null) {
+      return null;
+    }
+
+    if ($reserva['estado'] === $nuevoEstado) {
+      // No se duplica un evento cuando el estado solicitado ya está aplicado.
+      return $reserva;
+    }
+
+    $this->conexion->beginTransaction();
+
+    try {
+      $sentencia = $this->conexion->prepare(
+        'UPDATE reserva
+                SET estado = :estado
+                WHERE id = :id'
+      );
+
+      $sentencia->execute([
+        'estado' => $nuevoEstado,
+        'id' => $id,
+      ]);
+
+      [$tipoEvento, $descripcion] = match ($nuevoEstado) {
+        'confirmada' => ['confirmacion', 'Reserva confirmada por el alojamiento.'],
+        'cancelada' => ['cancelacion', 'Reserva cancelada.'],
+        default => ['modificacion', 'Estado de la reserva actualizado.'],
+      };
+
+      $this->registrarEvento(
+        $id,
+        $tipoEvento,
+        $descripcion,
+        (new DateTimeImmutable())->format('Y-m-d H:i:s')
+      );
+
+      $this->conexion->commit();
+
+      return $this->obtenerPorId($id);
+    } catch (Throwable $e) {
+      // Mantiene sincronizados el estado de la reserva y su historial.
+      $this->conexion->rollBack();
+
+      throw $e;
+    }
+  }
+
+  /** Inserta un evento dentro de la transacción activa del repositorio. */
+  private function registrarEvento(
+    int $reservaId,
+    string $tipoEvento,
+    string $descripcion,
+    string $fechaEvento
+  ): void {
+    $sentencia = $this->conexion->prepare(
+      'INSERT INTO reserva_evento (
+                reserva_id,
+                tipo_evento,
+                descripcion,
+                fecha_evento
+            ) VALUES (
+                :reserva_id,
+                :tipo_evento,
+                :descripcion,
+                :fecha_evento
+            )'
+    );
+
+    $sentencia->execute([
+      'reserva_id' => $reservaId,
+      'tipo_evento' => $tipoEvento,
+      'descripcion' => $descripcion,
+      'fecha_evento' => $fechaEvento,
+    ]);
+  }
+}

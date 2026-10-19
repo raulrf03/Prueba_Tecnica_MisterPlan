@@ -1,0 +1,9 @@
+{
+  "nombre_huesped": "Prueba inválida",
+  "email_huesped": "prueba@example.com",
+  "alojamiento": "Apartamento Vista Mar",
+  "fecha_entrada": "2027-02-05",
+  "fecha_salida": "2027-02-01",
+  "num_personas": 2,
+  "importe_total": 300
+}

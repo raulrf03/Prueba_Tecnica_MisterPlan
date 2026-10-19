@@ -4,43 +4,76 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use App\Database\Database;
+use App\Controllers\ReservaApiController;
+use App\Routes\Router;
+use App\Security\Csrf;
 
 header('Content-Type: text/html; charset=utf-8');
 
-try {
-  $pdo = Database::getConnection();
+$ruta = Router::obtenerRuta();
 
-  $resultado = $pdo->query(
-    'SELECT COUNT(*) AS total FROM reserva'
-  )->fetch();
+if (Router::esRutaApi($ruta)) {
+    $controlador = new ReservaApiController();
 
-  $totalReservas = (int) $resultado['total'];
-} catch (Throwable $e) {
-  http_response_code(500);
+    if ($ruta === '/api/reservas') {
+        // POST crea una reserva; los GET con parámetros aplican filtros.
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $controlador->crear();
 
-  echo '<h1>Error de conexión</h1>';
-  echo '<p>No se ha podido conectar con la base de datos.</p>';
+            exit;
+        }
 
-  exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && $_GET !== []) {
+            $controlador->buscar();
+
+            exit;
+        }
+
+        // Un GET sin filtros devuelve todas las reservas.
+        $controlador->listar();
+
+        exit;
+    }
+
+    if (preg_match('#^/api/reservas/(\d+)$#', $ruta, $coincidencias) === 1) {
+        $controlador->obtener((int) $coincidencias[1]);
+
+        exit;
+    }
+
+    if (preg_match('#^/api/reservas/(\d+)/estado$#', $ruta, $coincidencias) === 1) {
+        // El cambio de estado solo se permite mediante PATCH.
+        if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
+            $controlador->cambiarEstado((int) $coincidencias[1]);
+
+            exit;
+        }
+
+        Router::responderError('Método no permitido.', 405);
+
+        exit;
+    }
+
+    Router::responderError('Endpoint no encontrado.', 404);
+
+    exit;
 }
+
+// El token CSRF se incluye en la página para proteger las peticiones de escritura.
+$csrfToken = Csrf::obtenerToken();
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reservas de alojamiento</title>
+  <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservas de alojamiento</title>
 </head>
-
 <body>
-  <h1>Reservas de alojamiento</h1>
+    <h1>Reservas de alojamiento</h1>
 
-  <p>
-    La aplicación está conectada correctamente a la base de datos.
-    Actualmente hay <?= htmlspecialchars((string) $totalReservas, ENT_QUOTES, 'UTF-8') ?> reservas registradas.
-  </p>
+    <p>La aplicación está funcionando y preparada para separar vistas HTML y API.</p>
 </body>
-
 </html>
