@@ -5,8 +5,8 @@ declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
 use App\Controllers\ReservaApiController;
+use App\Controllers\ReservaViewController;
 use App\Routes\Router;
-use App\Security\Csrf;
 
 header('Content-Type: text/html; charset=utf-8');
 
@@ -23,20 +23,33 @@ if (Router::esRutaApi($ruta)) {
             exit;
         }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'GET' && $_GET !== []) {
-            $controlador->buscar();
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            if ($_GET !== []) {
+                $controlador->buscar();
+
+                exit;
+            }
+
+            $controlador->listar();
 
             exit;
         }
 
-        // Un GET sin filtros devuelve todas las reservas.
-        $controlador->listar();
+        header('Allow: GET, POST');
+        Router::responderError('Método no permitido.', 405);
 
         exit;
     }
 
     if (preg_match('#^/api/reservas/(\d+)$#', $ruta, $coincidencias) === 1) {
-        $controlador->obtener((int) $coincidencias[1]);
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $controlador->obtener((int) $coincidencias[1]);
+
+            exit;
+        }
+
+        header('Allow: GET');
+        Router::responderError('Método no permitido.', 405);
 
         exit;
     }
@@ -49,6 +62,7 @@ if (Router::esRutaApi($ruta)) {
             exit;
         }
 
+        header('Allow: PATCH');
         Router::responderError('Método no permitido.', 405);
 
         exit;
@@ -59,21 +73,44 @@ if (Router::esRutaApi($ruta)) {
     exit;
 }
 
-// El token CSRF se incluye en la página para proteger las peticiones de escritura.
-$csrfToken = Csrf::obtenerToken();
-?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reservas de alojamiento</title>
-</head>
-<body>
-    <h1>Reservas de alojamiento</h1>
+// Rutas HTML renderizadas mediante Twig.
+$controladorVistas = new ReservaViewController();
+$metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-    <p>La aplicación está funcionando y preparada para separar vistas HTML y API.</p>
-</body>
-</html>
+// Página principal: listado de reservas.
+if ($ruta === '/') {
+    if ($metodo !== 'GET') {
+        header('Allow: GET');
+        http_response_code(405);
+
+        echo 'Método no permitido.';
+
+        exit;
+    }
+
+    $controladorVistas->listar();
+
+    exit;
+}
+
+// Página de detalle de una reserva.
+if (preg_match('#^/reservas/(\d+)$#', $ruta, $coincidencias) === 1) {
+    if ($metodo !== 'GET') {
+        header('Allow: GET');
+        http_response_code(405);
+
+        echo 'Método no permitido.';
+
+        exit;
+    }
+
+    $controladorVistas->detalle((int) $coincidencias[1]);
+
+    exit;
+}
+
+// Las rutas HTML no registradas usan la plantilla de error.
+$controladorVistas->noEncontrado();
+
+exit;

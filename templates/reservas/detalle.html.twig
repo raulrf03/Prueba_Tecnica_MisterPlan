@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{% block titulo %}Detalle de la reserva #{{ reserva.id }}{% endblock %}
+
+{% block contenido %}
+  <section class="detalle">
+    <h2>Reserva #{{ reserva.id }}</h2>
+
+    <dl>
+      <dt>Huésped</dt>
+      <dd>{{ reserva.nombre_huesped }}</dd>
+
+      <dt>Email</dt>
+      <dd>{{ reserva.email_huesped }}</dd>
+
+      <dt>Alojamiento</dt>
+      <dd>{{ reserva.alojamiento }}</dd>
+
+      <dt>Entrada</dt>
+      <dd>{{ reserva.fecha_entrada }}</dd>
+
+      <dt>Salida</dt>
+      <dd>{{ reserva.fecha_salida }}</dd>
+
+      <dt>Personas</dt>
+      <dd>{{ reserva.num_personas }}</dd>
+
+      <dt>Importe</dt>
+      <dd>{{ reserva.importe_total }} €</dd>
+
+      <dt>Estado</dt>
+      <dd>{{ reserva.estado }}</dd>
+
+      <dt>Notas</dt>
+      <dd>{{ reserva.notas ?? 'Sin notas' }}</dd>
+
+      <dt>Fecha de creación</dt>
+      <dd>{{ reserva.fecha_creacion }}</dd>
+    </dl>
+
+    {% if reserva.estado == 'pendiente' %}
+      <button type="button" class="boton-cancelar" data-id="{{ reserva.id }}">
+        Cancelar reserva
+      </button>
+    {% endif %}
+
+    <a href="/">Volver al listado</a>
+  </section>
+
+  <section class="historial">
+    <h2>Historial de eventos</h2>
+
+    <ol class="timeline">
+      {% for evento in eventos %}
+        <li>
+          <strong>{{ evento.tipo_evento }}</strong>
+          <time>{{ evento.fecha_evento|date('d/m/Y H:i') }}</time>
+          <p>{{ evento.descripcion }}</p>
+        </li>
+      {% else %}
+        <li>No hay eventos registrados para esta reserva.</li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endblock %}

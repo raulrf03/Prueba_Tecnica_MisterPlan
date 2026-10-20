@@ -11,7 +11,7 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 use Throwable;
 use App\Security\Csrf;
-use RuntimeException;
+use App\Security\CsrfException;
 
 final class ReservaApiController
 {
@@ -201,7 +201,7 @@ final class ReservaApiController
       ], 201);
     } catch (InvalidArgumentException $e) {
       Router::responderError($e->getMessage(), 400);
-    } catch (RuntimeException $e) {
+    } catch (CsrfException $e) {
       Router::responderError($e->getMessage(), 403);
     } catch (Throwable $e) {
       error_log(sprintf(
@@ -265,7 +265,7 @@ final class ReservaApiController
       ]);
     } catch (InvalidArgumentException $e) {
       Router::responderError($e->getMessage(), 400);
-    } catch (RuntimeException $e) {
+    } catch (CsrfException $e) {
       Router::responderError($e->getMessage(), 403);
     } catch (Throwable $e) {
       error_log(sprintf(
