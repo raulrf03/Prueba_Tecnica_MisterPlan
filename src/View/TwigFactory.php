@@ -9,13 +9,13 @@ use Twig\Loader\FilesystemLoader;
 
 final class TwigFactory
 {
-    public static function crear(): Environment
-    {
-        $loader = new FilesystemLoader(__DIR__ . '/../../templates');
+  public static function crear(): Environment
+  {
+    $loader = new FilesystemLoader(__DIR__ . '/../../templates');
 
-        return new Environment($loader, [
-            'cache' => false,
-            'autoescape' => 'html',
-        ]);
-    }
+    return new Environment($loader, [
+      'cache' => false,
+      'autoescape' => 'html',
+    ]);
+  }
 }

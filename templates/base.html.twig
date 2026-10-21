@@ -9,10 +9,28 @@
   </head>
   <body>
     <header class="cabecera">
-      <h1>Reservas de alojamiento</h1>
-      <nav>
-        <a href="/">Listado</a>
-      </nav>
+      <div class="cabecera__interior">
+        <a class="marca" href="/" aria-label="Reservas de alojamiento: inicio">
+          <span class="marca__icono" aria-hidden="true">R</span>
+
+          <span class="marca__texto">
+            <span class="marca__nombre">Reservas</span>
+            <span class="marca__descripcion">Gestión de alojamientos</span>
+          </span>
+        </a>
+
+        <nav class="navegacion" aria-label="Navegación principal">
+          <a
+            class="navegacion__enlace"
+            href="/"
+            {% if pagina_actual|default('') == 'listado' %}
+            aria-current="page"
+            {% endif %}
+          >
+            Listado de reservas
+          </a>
+        </nav>
+      </div>
     </header>
 
     <main class="contenido">

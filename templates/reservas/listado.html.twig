@@ -3,77 +3,129 @@
 {% block titulo %}Listado de reservas{% endblock %}
 
 {% block contenido %}
-    <section class="filtros">
-        <h2>Filtrar reservas</h2>
+  <section class="filtros">
+    <h2>Filtrar reservas</h2>
 
-        <form id="formulario-filtros" class="formulario-filtros">
-            <label for="estado">Estado</label>
-            <select id="estado" name="estado">
-                <option value="">Todos</option>
-                <option value="pendiente">Pendiente</option>
-                <option value="confirmada">Confirmada</option>
-                <option value="cancelada">Cancelada</option>
-            </select>
+    {# JavaScript captura el envío de este formulario para no recargar. #}
+    <form id="formulario-filtros" class="formulario-filtros">
+      <div>
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado">
+          <option value="">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+      </div>
 
-            <label for="fecha_desde">Entrada desde</label>
-            <input type="date" id="fecha_desde" name="fecha_desde">
+      <div>
+        <label for="fecha_desde">Entrada desde</label>
+        <input
+          type="date"
+          id="fecha_desde"
+          name="fecha_desde"
+        >
+      </div>
 
-            <label for="fecha_hasta">Entrada hasta</label>
-            <input type="date" id="fecha_hasta" name="fecha_hasta">
+      <div>
+        <label for="fecha_hasta">Entrada hasta</label>
+        <input
+          type="date"
+          id="fecha_hasta"
+          name="fecha_hasta"
+        >
+      </div>
 
-            <label for="huesped">Huésped</label>
-            <input type="search" id="huesped" name="huesped" placeholder="Nombre del huésped">
+      <div>
+        <label for="huesped">Huésped</label>
+        <input
+          type="search"
+          id="huesped"
+          name="huesped"
+          maxlength="120"
+          placeholder="Nombre del huésped"
+        >
+      </div>
 
-            <button type="submit">Filtrar</button>
-            <button type="button" id="limpiar-filtros">Limpiar</button>
-        </form>
-    </section>
+      <button type="submit">Filtrar</button>
 
-    <section class="resultados">
-        <h2>Reservas</h2>
+      <button type="button" id="limpiar-filtros">
+        Limpiar
+      </button>
+    </form>
+  </section>
 
-        <p id="mensaje" class="mensaje" hidden></p>
+  <section class="resultados">
+    <h2>Reservas</h2>
 
-        <table>
-            <caption>Listado de reservas</caption>
-            <thead>
-                <tr>
-                    <th scope="col">Huésped</th>
-                    <th scope="col">Alojamiento</th>
-                    <th scope="col">Entrada</th>
-                    <th scope="col">Salida</th>
-                    <th scope="col">Personas</th>
-                    <th scope="col">Importe</th>
-                    <th scope="col">Estado</th>
-                    <th scope="col">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="tabla-reservas">
-                {% for reserva in reservas %}
-                    <tr data-reserva-id="{{ reserva.id }}">
-                        <td>{{ reserva.nombre_huesped }}</td>
-                        <td>{{ reserva.alojamiento }}</td>
-                        <td>{{ reserva.fecha_entrada }}</td>
-                        <td>{{ reserva.fecha_salida }}</td>
-                        <td>{{ reserva.num_personas }}</td>
-                        <td>{{ reserva.importe_total }} €</td>
-                        <td>{{ reserva.estado }}</td>
-                        <td>
-                            <a href="/reservas/{{ reserva.id }}">Ver detalle</a>
+    {# Aquí JavaScript muestra carga, número de resultados o errores. #}
+    {# Empieza oculto y aparece cuando se realiza una búsqueda. #}
+    <p
+      id="mensaje"
+      class="mensaje"
+      role="status"
+      aria-live="polite"
+      hidden
+    ></p>
 
-                            {% if reserva.estado == 'pendiente' %}
-                                <button type="button" class="boton-cancelar" data-id="{{ reserva.id }}">
-                                    Cancelar
-                                </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="8">No hay reservas que coincidan con los filtros.</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+    <table>
+      <caption>Listado de reservas</caption>
+
+      <thead>
+        <tr>
+          <th scope="col">Huésped</th>
+          <th scope="col">Alojamiento</th>
+          <th scope="col">Entrada</th>
+          <th scope="col">Salida</th>
+          <th scope="col">Personas</th>
+          <th scope="col">Importe</th>
+          <th scope="col">Estado</th>
+          <th scope="col">Acciones</th>
+        </tr>
+      </thead>
+
+      {# Twig pinta las filas iniciales; JavaScript las sustituye al filtrar. #}
+      <tbody id="tabla-reservas">
+        {% for reserva in reservas %}
+          <tr data-reserva-id="{{ reserva.id }}">
+            <td>{{ reserva.nombre_huesped }}</td>
+            <td>{{ reserva.alojamiento }}</td>
+            <td>{{ reserva.fecha_entrada|date('d/m/Y') }}</td>
+            <td>{{ reserva.fecha_salida|date('d/m/Y') }}</td>
+            <td>{{ reserva.num_personas }}</td>
+            <td>
+              {{ reserva.importe_total|number_format(2, ',', '.') }} €
+            </td>
+            <td>{{ reserva.estado }}</td>
+            <td>
+              <div class="acciones-reserva">
+                <a
+                  href="/reservas/{{ reserva.id }}"
+                  class="boton-detalle"
+                >
+                  Ver detalle
+                </a>
+
+                {% if reserva.estado == 'pendiente' %}
+                  <button
+                    type="button"
+                    class="boton-cancelar"
+                    data-id="{{ reserva.id }}"
+                  >
+                    Cancelar
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="8">
+              No hay reservas que coincidan con los filtros.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
 {% endblock %}

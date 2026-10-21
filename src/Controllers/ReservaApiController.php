@@ -79,29 +79,52 @@ final class ReservaApiController
   }
 
   /** Valida los filtros recibidos por query string y devuelve las coincidencias. */
+  /** Valida los filtros y devuelve las reservas que coinciden. */
   public function buscar(): void
   {
     try {
       $filtros = [];
 
       if (isset($_GET['estado'])) {
-        $filtros['estado'] = InputValidator::requireEstado($_GET, 'estado');
+        $filtros['estado'] = InputValidator::requireEstado(
+          $_GET,
+          'estado'
+        );
       }
 
       if (isset($_GET['fecha_desde'])) {
-        $filtros['fecha_desde'] = InputValidator::requireDate($_GET, 'fecha_desde');
+        $filtros['fecha_desde'] = InputValidator::requireDate(
+          $_GET,
+          'fecha_desde'
+        );
       }
 
       if (isset($_GET['fecha_hasta'])) {
-        $filtros['fecha_hasta'] = InputValidator::requireDate($_GET, 'fecha_hasta');
+        $filtros['fecha_hasta'] = InputValidator::requireDate(
+          $_GET,
+          'fecha_hasta'
+        );
       }
 
       if (isset($_GET['huesped'])) {
-        $filtros['huesped'] = InputValidator::requireString($_GET, 'huesped', 120);
+        $filtros['huesped'] = InputValidator::requireString(
+          $_GET,
+          'huesped',
+          120
+        );
+      }
+
+      // Después de validar cada fecha, comprobamos el rango completo.
+      if (
+        isset($filtros['fecha_desde'], $filtros['fecha_hasta'])
+        && $filtros['fecha_desde'] > $filtros['fecha_hasta']
+      ) {
+        throw new InvalidArgumentException(
+          'La fecha desde no puede ser posterior a la fecha hasta.'
+        );
       }
 
       $repositorio = new ReservaRepository();
-
       $reservas = $repositorio->buscar($filtros);
 
       Router::responderJson([
@@ -109,7 +132,6 @@ final class ReservaApiController
         'total' => count($reservas),
       ]);
     } catch (InvalidArgumentException $e) {
-      // Los filtros inválidos son errores de petición, no fallos del servidor.
       Router::responderError($e->getMessage(), 400);
     } catch (Throwable $e) {
       error_log(sprintf(
@@ -196,7 +218,7 @@ final class ReservaApiController
       $reserva = $repositorio->obtenerPorId($reservaId);
 
       Router::responderJson([
-        'mensaje' => 'Reserva creada correctamente.',
+        'eservas.js' => 'Reserva creada correctamente.',
         'datos' => $reserva,
       ], 201);
     } catch (InvalidArgumentException $e) {
