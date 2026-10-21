@@ -3,6 +3,16 @@
 {% block titulo %}Listado de reservas{% endblock %}
 
 {% block contenido %}
+  
+  <details class="panel-creacion">
+    <summary class="panel-creacion__resumen">
+      Crear nueva reserva
+    </summary>
+
+    {% include 'reservas/formulario_creacion.html.twig' %}
+  </details>
+
+
   <section class="filtros">
     <h2>Filtrar reservas</h2>
 
@@ -80,7 +90,8 @@
           <th scope="col">Personas</th>
           <th scope="col">Importe</th>
           <th scope="col">Estado</th>
-          <th scope="col">Acciones</th>
+          <th scope="col">Ver</th>
+          <th scope="col">Gestionar</th>
         </tr>
       </thead>
 
@@ -98,15 +109,25 @@
             </td>
             <td>{{ reserva.estado }}</td>
             <td>
-              <div class="acciones-reserva">
-                <a
-                  href="/reservas/{{ reserva.id }}"
-                  class="boton-detalle"
-                >
-                  Ver detalle
-                </a>
+              <a
+                href="/reservas/{{ reserva.id }}"
+                class="boton-detalle"
+              >
+                Ver detalle
+              </a>
+            </td>
 
+            <td>
+              <div class="acciones-reserva">
                 {% if reserva.estado == 'pendiente' %}
+                  <button
+                    type="button"
+                    class="boton-confirmar"
+                    data-id="{{ reserva.id }}"
+                  >
+                    Confirmar
+                  </button>
+
                   <button
                     type="button"
                     class="boton-cancelar"
@@ -120,7 +141,7 @@
           </tr>
         {% else %}
           <tr>
-            <td colspan="8">
+            <td colspan="9">
               No hay reservas que coincidan con los filtros.
             </td>
           </tr>

@@ -7,6 +7,8 @@
   const botonLimpiar = document.querySelector('#limpiar-filtros');
   const estadoReserva = document.querySelector('#estado-reserva');
   const historialEventos = document.querySelector('#historial-eventos');
+  const formularioCreacion = document.querySelector('#formulario-creacion');
+  const mensajeCreacion = document.querySelector('#mensaje-creacion');
 
   const esListado = Boolean(formulario && tabla && botonLimpiar);
   const esDetalle = Boolean(estadoReserva && historialEventos);
@@ -46,7 +48,7 @@
       });
     }
 
-    document.querySelectorAll('.boton-cancelar').forEach((boton) => {
+    document.querySelectorAll('.boton-cancelar, .boton-confirmar').forEach((boton) => {
       boton.disabled = cargando;
     });
 
@@ -56,6 +58,14 @@
 
     if (estadoReserva) {
       estadoReserva.closest('.detalle')?.setAttribute('aria-busy', String(cargando));
+    }
+
+    if (formularioCreacion) {
+      formularioCreacion.querySelectorAll('input, textarea, button').forEach((control) => {
+        control.disabled = cargando;
+      });
+
+      formularioCreacion.setAttribute('aria-busy', String(cargando));
     }
   }
 
@@ -161,20 +171,31 @@
     agregarCelda(fila, formatoImporte.format(Number(reserva.importe_total)));
     agregarCelda(fila, reserva.estado);
 
-    const celdaAcciones = agregarCelda(fila, '');
-    const acciones = document.createElement('div');
-
-    acciones.className = 'acciones-reserva';
-
+    // Columna «Ver».
+    const celdaVer = agregarCelda(fila, '');
     const enlace = document.createElement('a');
 
     enlace.href = `/reservas/${encodeURIComponent(String(reserva.id))}`;
     enlace.className = 'boton-detalle';
     enlace.textContent = 'Ver detalle';
 
-    acciones.append(enlace);
+    celdaVer.append(enlace);
+
+    // Columna «Gestionar».
+    const celdaGestionar = agregarCelda(fila, '');
+    const acciones = document.createElement('div');
+
+    acciones.className = 'acciones-reserva';
 
     if (reserva.estado === 'pendiente') {
+      const botonConfirmar = document.createElement('button');
+
+      botonConfirmar.type = 'button';
+      botonConfirmar.className = 'boton-confirmar';
+      botonConfirmar.dataset.id = String(reserva.id);
+      botonConfirmar.textContent = 'Confirmar';
+      botonConfirmar.disabled = ocupado;
+
       const botonCancelar = document.createElement('button');
 
       botonCancelar.type = 'button';
@@ -183,10 +204,10 @@
       botonCancelar.textContent = 'Cancelar';
       botonCancelar.disabled = ocupado;
 
-      acciones.append(botonCancelar);
+      acciones.append(botonConfirmar, botonCancelar);
     }
-
-    celdaAcciones.append(acciones);
+    
+    celdaGestionar.append(acciones);
 
     return fila;
   }
@@ -308,7 +329,7 @@
     }
   }
 
-  async function cancelarReserva(boton) {
+  async function cambiarEstadoReserva(boton, nuevoEstado) {
     if (ocupado) {
       return;
     }
@@ -320,13 +341,16 @@
       return;
     }
 
-    const confirmado = window.confirm(`¿Quieres cancelar la reserva #${id}?`);
+    const esConfirmacion = nuevoEstado === 'confirmada';
+    const accion = esConfirmacion ? 'confirmar' : 'cancelar';
+    const progreso = esConfirmacion ? 'Confirmando…' : 'Cancelando…';
+    const resultado = esConfirmacion ? 'confirmado' : 'cancelado';
 
-    if (!confirmado) {
+    if (!window.confirm(`¿Quieres ${accion} la reserva #${id}?`)) {
       return;
     }
 
-    let cancelacionConfirmada = false;
+    let operacionConfirmada = false;
     const textoOriginal = boton.textContent;
 
     try {
@@ -336,12 +360,11 @@
         throw new Error('No se ha encontrado el token de seguridad. Recarga la página.');
       }
 
-      // Guardamos los filtros antes de deshabilitar los controles.
       const parametros = esListado ? obtenerParametros() : null;
 
       establecerCarga(true);
-      boton.textContent = 'Cancelando…';
-      mostrarMensaje('Cancelando reserva…');
+      boton.textContent = progreso;
+      mostrarMensaje(progreso);
 
       const contenido = await solicitarJson(`/api/reservas/${encodeURIComponent(id)}/estado`, {
         method: 'PATCH',
@@ -350,53 +373,51 @@
           'X-CSRF-Token': token,
         },
         body: JSON.stringify({
-          estado: 'cancelada',
+          estado: nuevoEstado,
         }),
       });
 
-      // Desde aquí la API ha confirmado que la operación se ha completado.
-      cancelacionConfirmada = true;
+      operacionConfirmada = true;
 
       if (
         !contenido?.datos ||
-        contenido.datos.estado !== 'cancelada' ||
+        contenido.datos.estado !== nuevoEstado ||
         !Array.isArray(contenido.eventos)
       ) {
-        throw new Error('La respuesta de cancelación no tiene el formato esperado.');
+        throw new Error('La respuesta no tiene el formato esperado.');
       }
 
       if (esListado) {
-        // Actualiza inmediatamente la fila con la respuesta del PATCH.
-        // Si después falla la consulta del listado, no dejamos un botón
-        // que permita volver a cancelar una reserva ya cancelada.
         const fila = boton.closest('tr');
 
         if (fila) {
           fila.replaceWith(crearFila(contenido.datos));
         }
 
-        // Vuelve a aplicar los filtros activos.
         await actualizarListado(parametros);
       } else {
         actualizarDetalle(contenido.datos, contenido.eventos, boton);
       }
 
-      mostrarMensaje(`La reserva #${id} se ha cancelado correctamente.`, 'exito');
+      mostrarMensaje(`La reserva #${id} se ha ${resultado} correctamente.`, 'exito');
     } catch (error) {
-      if (cancelacionConfirmada) {
-        // No confundimos un fallo al actualizar la pantalla con
-        // un fallo en una cancelación que el servidor ya confirmó.
-        boton.remove();
+      if (operacionConfirmada) {
+        // Evita repetir una acción que el servidor ya ha aceptado.
+        const contenedor = boton.closest('.acciones-reserva, .detalle__acciones');
+
+        contenedor
+          ?.querySelectorAll('.boton-confirmar, .boton-cancelar')
+          .forEach((elemento) => elemento.remove());
 
         mostrarMensaje(
-          'El servidor ha confirmado la cancelación, pero no se ha podido ' +
+          'El servidor ha confirmado el cambio, pero no se ha podido ' +
             'actualizar completamente la pantalla. Recarga la página.',
           'error'
         );
       } else {
         mostrarMensaje(
           `${obtenerMensajeError(error)} Si se perdió la conexión durante ` +
-            'el envío, comprueba el estado antes de volver a intentarlo.',
+            'el envío, comprueba el estado antes de repetir la operación.',
           'error'
         );
       }
@@ -406,6 +427,112 @@
     }
   }
 
+  function mostrarMensajeCreacion(texto, tipo = 'informacion') {
+    mensajeCreacion.textContent = texto;
+    mensajeCreacion.dataset.tipo = tipo;
+    mensajeCreacion.hidden = false;
+  }
+
+  async function crearReserva(evento) {
+    evento.preventDefault();
+
+    if (ocupado || !formularioCreacion || !mensajeCreacion) {
+      return;
+    }
+
+    if (!formularioCreacion.reportValidity()) {
+      return;
+    }
+
+    const boton = formularioCreacion.querySelector('button[type="submit"]');
+    const textoOriginal = boton.textContent;
+    let creacionConfirmada = false;
+
+    try {
+      // FormData se construye antes de deshabilitar los controles.
+      const campos = new FormData(formularioCreacion);
+
+      const datos = {
+        nombre_huesped: String(campos.get('nombre_huesped') ?? '').trim(),
+        email_huesped: String(campos.get('email_huesped') ?? '').trim(),
+        alojamiento: String(campos.get('alojamiento') ?? '').trim(),
+        fecha_entrada: String(campos.get('fecha_entrada') ?? ''),
+        fecha_salida: String(campos.get('fecha_salida') ?? ''),
+        num_personas: Number(campos.get('num_personas')),
+        importe_total: String(campos.get('importe_total') ?? ''),
+        notas: String(campos.get('notas') ?? '').trim(),
+      };
+
+      if (!datos.nombre_huesped || !datos.email_huesped || !datos.alojamiento) {
+        throw new Error('Los campos obligatorios no pueden contener solo espacios.');
+      }
+
+      if (datos.fecha_salida <= datos.fecha_entrada) {
+        throw new Error('La fecha de salida debe ser posterior a la fecha de entrada.');
+      }
+
+      const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+      if (!token) {
+        throw new Error('No se ha encontrado el token de seguridad. Recarga la página.');
+      }
+
+      // Conservamos los filtros activos al actualizar la tabla.
+      const parametros = obtenerParametros();
+
+      establecerCarga(true);
+      boton.textContent = 'Creando…';
+      mostrarMensajeCreacion('Creando reserva…');
+
+      const contenido = await solicitarJson('/api/reservas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': token,
+        },
+        body: JSON.stringify(datos),
+      });
+
+      creacionConfirmada = true;
+      formularioCreacion.reset();
+
+      if (!contenido?.datos?.id) {
+        throw new Error('La respuesta no contiene el identificador de la reserva creada.');
+      }
+
+      await actualizarListado(parametros);
+
+      const hayFiltros = parametros.toString() !== '';
+
+      mostrarMensajeCreacion(
+        `Reserva #${contenido.datos.id} creada correctamente.` +
+          (hayFiltros
+            ? ' Se mantienen los filtros: podría no aparecer en la tabla si no coincide con ellos.'
+            : ''),
+        'exito'
+      );
+    } catch (error) {
+      if (creacionConfirmada) {
+        mostrarMensajeCreacion(
+          'El servidor ha confirmado la creación, pero no se ha podido ' +
+            'actualizar completamente la pantalla. No vuelvas a enviarla; ' +
+            'recarga el listado para comprobarla.',
+          'error'
+        );
+      } else {
+        const avisoRed =
+          error instanceof TypeError
+            ? ' Si el fallo ocurrió durante el envío, comprueba el listado ' +
+              'antes de repetirlo para evitar duplicados.'
+            : '';
+
+        mostrarMensajeCreacion(obtenerMensajeError(error) + avisoRed, 'error');
+      }
+    } finally {
+      boton.textContent = textoOriginal;
+      establecerCarga(false);
+    }
+  }
   // Los eventos de filtrado solo se registran en el listado.
   if (esListado) {
     formulario.addEventListener('submit', (evento) => {
@@ -423,22 +550,25 @@
     });
   }
 
-  // Un único listener también atiende los botones creados al filtrar.
+  if (esListado && formularioCreacion && mensajeCreacion) {
+    formularioCreacion.addEventListener('submit', crearReserva);
+  }
+
   document.addEventListener('click', (evento) => {
     if (!(evento.target instanceof Element)) {
       return;
     }
 
-    const boton = evento.target.closest('.boton-cancelar');
+    const boton = evento.target.closest('.boton-cancelar, .boton-confirmar');
 
-    if (!(boton instanceof HTMLButtonElement)) {
+    if (!(boton instanceof HTMLButtonElement) || boton.disabled) {
       return;
     }
 
     evento.preventDefault();
 
-    if (!boton.disabled) {
-      cancelarReserva(boton);
-    }
+    const nuevoEstado = boton.classList.contains('boton-confirmar') ? 'confirmada' : 'cancelada';
+
+    cambiarEstadoReserva(boton, nuevoEstado);
   });
 })();

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+date_default_timezone_set('Europe/Madrid');
+
 use App\Controllers\ReservaApiController;
 use App\Controllers\ReservaViewController;
 use App\Routes\Router;

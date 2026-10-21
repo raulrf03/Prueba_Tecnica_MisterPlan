@@ -8,6 +8,7 @@ use App\Repositories\ReservaRepository;
 use App\Security\Csrf;
 use App\View\TwigFactory;
 use Throwable;
+use DateTimeImmutable;
 
 final class ReservaViewController
 {
@@ -21,6 +22,7 @@ final class ReservaViewController
         'reservas' => $repositorio->obtenerTodas(),
         'csrf_token' => Csrf::obtenerToken(),
         'pagina_actual' => 'listado',
+        'fecha_minima' => (new DateTimeImmutable('today'))->format('Y-m-d'),
       ]);
     } catch (Throwable $e) {
       error_log(sprintf(

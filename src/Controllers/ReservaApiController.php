@@ -185,7 +185,13 @@ final class ReservaApiController
 
         return;
       }
+      $hoy = (new DateTimeImmutable('today'))->format('Y-m-d');
 
+      if ($fechaEntrada < $hoy) {
+        throw new InvalidArgumentException(
+          'La fecha de entrada no puede ser anterior a hoy.'
+        );
+      }
       if ($fechaSalida <= $fechaEntrada) {
         Router::responderError(
           'La fecha de salida debe ser posterior a la fecha de entrada.',
