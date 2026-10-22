@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use Throwable;
 use App\Security\Csrf;
 use App\Security\CsrfException;
+use App\Exceptions\EstadoReservaException;
 
 final class ReservaApiController
 {
@@ -78,7 +79,6 @@ final class ReservaApiController
     }
   }
 
-  /** Valida los filtros recibidos por query string y devuelve las coincidencias. */
   /** Valida los filtros y devuelve las reservas que coinciden. */
   public function buscar(): void
   {
@@ -152,59 +152,68 @@ final class ReservaApiController
   public function crear(): void
   {
     try {
-      // Las peticiones de escritura deben incluir un token CSRF válido.
       Csrf::validarPeticion();
 
-      $contenido = file_get_contents('php://input');
-      $datos = json_decode($contenido ?: '', true);
+      $datos = $this->leerObjetoJson();
 
-      if (!is_array($datos)) {
-        Router::responderError('El cuerpo de la petición debe ser JSON válido.', 400);
-
-        return;
-      }
-
-      // Cada campo se valida antes de construir los datos que se guardarán.
-      $nombreHuesped = InputValidator::requireString($datos, 'nombre_huesped', 120);
-      $emailHuesped = InputValidator::requireEmail($datos, 'email_huesped');
-      $alojamiento = InputValidator::requireString($datos, 'alojamiento', 120);
-      $fechaEntrada = InputValidator::requireDate($datos, 'fecha_entrada');
-      $fechaSalida = InputValidator::requireDate($datos, 'fecha_salida');
-      $numPersonas = InputValidator::requirePositiveInt($datos, 'num_personas');
-
-      $importeTotal = filter_var(
-        $datos['importe_total'] ?? null,
-        FILTER_VALIDATE_FLOAT
+      $nombreHuesped = InputValidator::requireString(
+        $datos,
+        'nombre_huesped',
+        120
       );
 
-      if ($importeTotal === false || $importeTotal < 0) {
-        Router::responderError(
-          'El campo \'importe_total\' debe ser un número igual o mayor que cero.',
-          400
-        );
+      $emailHuesped = InputValidator::requireEmail(
+        $datos,
+        'email_huesped'
+      );
 
-        return;
-      }
-      $hoy = (new DateTimeImmutable('today'))->format('Y-m-d');
+      $alojamiento = InputValidator::requireString(
+        $datos,
+        'alojamiento',
+        120
+      );
+
+      $fechaEntrada = InputValidator::requireDate(
+        $datos,
+        'fecha_entrada'
+      );
+
+      $fechaSalida = InputValidator::requireDate(
+        $datos,
+        'fecha_salida'
+      );
+
+      $numPersonas = InputValidator::requirePositiveInt(
+        $datos,
+        'num_personas',
+        255
+      );
+
+      $importeTotal = InputValidator::requireAmount(
+        $datos,
+        'importe_total'
+      );
+
+      $notas = InputValidator::optionalString(
+        $datos,
+        'notas',
+        5000
+      );
+
+      $ahora = new DateTimeImmutable();
+      $hoy = $ahora->format('Y-m-d');
 
       if ($fechaEntrada < $hoy) {
         throw new InvalidArgumentException(
           'La fecha de entrada no puede ser anterior a hoy.'
         );
       }
+
       if ($fechaSalida <= $fechaEntrada) {
-        Router::responderError(
-          'La fecha de salida debe ser posterior a la fecha de entrada.',
-          400
+        throw new InvalidArgumentException(
+          'La fecha de salida debe ser posterior a la fecha de entrada.'
         );
-
-        return;
       }
-
-      // Las notas vacías se guardan como NULL para mantener uniforme el dato.
-      $notas = isset($datos['notas']) && trim((string) $datos['notas']) !== ''
-        ? trim((string) $datos['notas'])
-        : null;
 
       $repositorio = new ReservaRepository();
 
@@ -215,16 +224,18 @@ final class ReservaApiController
         'fecha_entrada' => $fechaEntrada,
         'fecha_salida' => $fechaSalida,
         'num_personas' => $numPersonas,
-        'importe_total' => number_format($importeTotal, 2, '.', ''),
+        'importe_total' => $importeTotal,
         'estado' => 'pendiente',
         'notas' => $notas,
-        'fecha_creacion' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        'fecha_creacion' => $ahora->format('Y-m-d H:i:s'),
       ]);
 
       $reserva = $repositorio->obtenerPorId($reservaId);
 
+      header('Location: /api/reservas/' . $reservaId);
+
       Router::responderJson([
-        'eservas.js' => 'Reserva creada correctamente.',
+        'mensaje' => 'Reserva creada correctamente.',
         'datos' => $reserva,
       ], 201);
     } catch (InvalidArgumentException $e) {
@@ -253,14 +264,7 @@ final class ReservaApiController
       // El cambio de estado también es una operación protegida contra CSRF.
       Csrf::validarPeticion();
 
-      $contenido = file_get_contents('php://input');
-      $datos = json_decode($contenido ?: '', true);
-
-      if (!is_array($datos)) {
-        Router::responderError('El cuerpo de la petición debe ser JSON válido.', 400);
-
-        return;
-      }
+      $datos = $this->leerObjetoJson();
 
       $nuevoEstado = InputValidator::requireEstado($datos, 'estado');
 
@@ -295,6 +299,8 @@ final class ReservaApiController
       Router::responderError($e->getMessage(), 400);
     } catch (CsrfException $e) {
       Router::responderError($e->getMessage(), 403);
+    } catch (EstadoReservaException $e) {
+      Router::responderError($e->getMessage(), 409);
     } catch (Throwable $e) {
       error_log(sprintf(
         'Error al cambiar el estado de la reserva %d: %s en %s:%d',
@@ -309,5 +315,40 @@ final class ReservaApiController
         500
       );
     }
+  }
+  /** Lee un objeto JSON y rechaza cuerpos vacíos, mal formados o de otro tipo. */
+  private function leerObjetoJson(): array
+  {
+    $contenido = file_get_contents('php://input');
+
+    if ($contenido === false || trim($contenido) === '') {
+      throw new InvalidArgumentException(
+        'El cuerpo de la petición debe ser un objeto JSON válido.'
+      );
+    }
+
+    try {
+      // Sin true, podemos distinguir un objeto JSON de una lista JSON.
+      $objeto = json_decode(
+        $contenido,
+        false,
+        32,
+        JSON_THROW_ON_ERROR
+      );
+    } catch (\JsonException $e) {
+      throw new InvalidArgumentException(
+        'El cuerpo de la petición debe ser un objeto JSON válido.',
+        0,
+        $e
+      );
+    }
+
+    if (!$objeto instanceof \stdClass) {
+      throw new InvalidArgumentException(
+        'El cuerpo de la petición debe ser un objeto JSON, no una lista ni un valor simple.'
+      );
+    }
+
+    return get_object_vars($objeto);
   }
 }

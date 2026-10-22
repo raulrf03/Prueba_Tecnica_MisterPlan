@@ -1,4 +1,5 @@
 <?php
+
 /** Gestiona la conexión compartida con la base de datos. */
 
 declare(strict_types=1);
@@ -7,7 +8,6 @@ namespace App\Database;
 
 use PDO;
 
-/** Crea y reutiliza la conexión PDO de la aplicación. */
 class Database
 {
   private static ?PDO $connection = null;

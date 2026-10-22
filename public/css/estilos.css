@@ -370,17 +370,7 @@ td {
   overflow-wrap: anywhere;
 }
 
-/* Foco de teclado */
-
-.marca:focus-visible,
-.navegacion__enlace:focus-visible,
-.enlace-volver:focus-visible,
-.boton-cancelar:focus-visible {
-  outline: 3px solid #2563eb;
-  outline-offset: 4px;
-}
-
-/* Acciones de cada reserva: se aplican en todos los tamaños */
+/* Acciones de reserva */
 
 .acciones-reserva {
   display: flex;
@@ -414,9 +404,24 @@ td {
   background: #1e40af;
 }
 
-.boton-detalle:focus-visible {
-  outline: 3px solid #2563eb;
-  outline-offset: 4px;
+.boton-confirmar {
+  width: auto;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.boton-confirmar:hover:not(:disabled) {
+  border-color: #34d399;
+  background: #d1fae5;
 }
 
 .acciones-reserva .boton-cancelar {
@@ -424,110 +429,42 @@ td {
   white-space: nowrap;
 }
 
-/* Adaptación a pantallas pequeñas */
-
-@media (max-width: 640px) {
-  .cabecera__interior {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .navegacion,
-  .navegacion__enlace {
-    width: max-content;
-  }
-
-  .detalle-cabecera {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .detalle,
-  .historial {
-    padding: 1rem;
-  }
-
-  .detalle__datos {
-    grid-template-columns: 1fr;
-    gap: 1.1rem;
-  }
-
-  .detalle__encabezado {
-    flex-wrap: wrap;
-  }
-
-  .detalle__acciones .boton-cancelar {
-    width: 100%;
-  }
+.detalle__acciones {
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
-/* Mensajes y estado de carga: todos los tamaños */
+/* Formulario de creación */
 
-.mensaje {
-  padding: 0.75rem 1rem;
-  border: 1px solid #b8c5d1;
-  border-radius: 6px;
-  background: #edf3f8;
-  color: #243b53;
+.panel-creacion {
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
 }
 
-.mensaje[data-tipo='exito'] {
-  border-color: #a3cfbb;
-  background: #eaf6ee;
-  color: #14532d;
+.panel-creacion__resumen {
+  padding: 1rem 1.25rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.mensaje[data-tipo='error'] {
-  border-color: #f1aeb5;
-  background: #fcebed;
-  color: #842029;
+.panel-creacion__resumen:hover {
+  background: #dbeafe;
 }
 
-button:disabled,
-input:disabled,
-select:disabled {
-  opacity: 0.65;
-  cursor: wait;
+.panel-creacion[open] > .panel-creacion__resumen {
+  border-bottom: 1px solid #e2e8f0;
 }
 
-tbody[aria-busy='true'] {
-  opacity: 0.55;
+.panel-creacion .creacion {
+  margin-bottom: 0;
+  border: 0;
+  border-radius: 0;
 }
-
-/* Tabla en pantallas pequeñas */
-
-@media (max-width: 720px) {
-  table,
-  thead,
-  tbody,
-  tr,
-  th,
-  td {
-    display: block;
-  }
-
-  thead {
-    display: none;
-  }
-
-  tr {
-    margin-bottom: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 0.5rem;
-  }
-}
-
-/* Enlace de regreso al final del detalle */
-
-.detalle-pie {
-  display: flex;
-  justify-content: flex-start;
-  margin: 0.5rem 0 1.5rem;
-}
-
-/* Creación de reservas */
 
 .creacion {
   margin-bottom: 1.5rem;
@@ -591,45 +528,49 @@ tbody[aria-busy='true'] {
   background: #1e40af;
 }
 
-.formulario-creacion :is(input, textarea, button):focus-visible {
+/* Mensajes y estado de carga */
+
+.mensaje {
+  padding: 0.75rem 1rem;
+  border: 1px solid #b8c5d1;
+  border-radius: 6px;
+  background: #edf3f8;
+  color: #243b53;
+}
+
+.mensaje[data-tipo='exito'] {
+  border-color: #a3cfbb;
+  background: #eaf6ee;
+  color: #14532d;
+}
+
+.mensaje[data-tipo='error'] {
+  border-color: #f1aeb5;
+  background: #fcebed;
+  color: #842029;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+tbody[aria-busy='true'] {
+  opacity: 0.55;
+}
+
+/* Foco de teclado */
+
+.marca:focus-visible,
+.navegacion__enlace:focus-visible,
+.enlace-volver:focus-visible,
+.boton-detalle:focus-visible,
+.boton-confirmar:focus-visible,
+.boton-cancelar:focus-visible {
   outline: 3px solid #2563eb;
-  outline-offset: 3px;
-}
-
-@media (max-width: 640px) {
-  .creacion {
-    padding: 1rem;
-  }
-
-  .formulario-creacion {
-    grid-template-columns: 1fr;
-  }
-
-  .boton-crear {
-    width: 100%;
-  }
-}
-
-/* Formulario de creación desplegable */
-
-.panel-creacion {
-  margin-bottom: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #fff;
-  overflow: hidden;
-}
-
-.panel-creacion__resumen {
-  padding: 1rem 1.25rem;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.panel-creacion__resumen:hover {
-  background: #dbeafe;
+  outline-offset: 4px;
 }
 
 .panel-creacion__resumen:focus-visible {
@@ -637,48 +578,74 @@ tbody[aria-busy='true'] {
   outline-offset: -3px;
 }
 
-.panel-creacion[open] > .panel-creacion__resumen {
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.panel-creacion .creacion {
-  margin-bottom: 0;
-  border: 0;
-  border-radius: 0;
-}
-
-.boton-confirmar {
-  width: auto;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid #a7f3d0;
-  border-radius: 8px;
-  background: #ecfdf5;
-  color: #065f46;
-  font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.boton-confirmar:hover:not(:disabled) {
-  border-color: #34d399;
-  background: #d1fae5;
-}
-
-.boton-confirmar:focus-visible {
+.formulario-creacion :is(input, textarea, button):focus-visible {
   outline: 3px solid #2563eb;
-  outline-offset: 4px;
+  outline-offset: 3px;
 }
 
-.detalle__acciones {
-  flex-wrap: wrap;
-  gap: 0.65rem;
+/* Ajustes para pantallas pequeñas */
+
+@media (max-width: 720px) {
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td {
+    display: block;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tr {
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 0.5rem;
+  }
 }
 
 @media (max-width: 640px) {
-  .detalle__acciones .boton-confirmar {
+  .cabecera__interior {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .navegacion,
+  .navegacion__enlace {
+    width: max-content;
+  }
+
+  .detalle-cabecera {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .detalle,
+  .historial,
+  .creacion {
+    padding: 1rem;
+  }
+
+  .detalle__datos,
+  .formulario-creacion {
+    grid-template-columns: 1fr;
+  }
+
+  .detalle__datos {
+    gap: 1.1rem;
+  }
+
+  .detalle__encabezado {
+    flex-wrap: wrap;
+  }
+
+  .detalle__acciones .boton-cancelar,
+  .detalle__acciones .boton-confirmar,
+  .boton-crear {
     width: 100%;
   }
 }

@@ -8,97 +8,86 @@ use App\Security\Csrf;
 use App\Security\CsrfException;
 use PHPUnit\Framework\TestCase;
 
-/** Pruebas unitarias de la protección CSRF. */
+/** Comprueba el token CSRF y la validación del origen de la petición. */
 final class CsrfTest extends TestCase
 {
-  /** Token CSRF que se simula como si estuviera guardado en la sesión. */
   private const TOKEN = 'test-csrf-token';
 
-  /**
-   * Se ejecuta antes de cada test.
-   *
-   * Prepara una sesión con un token conocido y simula una petición
-   * procedente de http://localhost:8000 con el token correcto.
-   */
+  private const CABECERAS = [
+    'HTTP_HOST',
+    'HTTPS',
+    'HTTP_X_CSRF_TOKEN',
+    'HTTP_ORIGIN',
+  ];
+
+  private array $servidorAnterior = [];
+  private array $sesionAnterior = [];
+
+  /** Prepara una petición válida antes de cada prueba. */
   protected function setUp(): void
   {
     parent::setUp();
 
-    // Garantiza que existe una sesión activa para poder asignar el token.
     if (session_status() !== PHP_SESSION_ACTIVE) {
       session_start();
     }
 
-    // Simula el token almacenado en la sesión del usuario.
-    $_SESSION['csrf_token'] = self::TOKEN;
+    // Guarda el estado previo para no eliminar datos de otras pruebas.
+    foreach (self::CABECERAS as $clave) {
+      $this->servidorAnterior[$clave] = [
+        'existe' => array_key_exists($clave, $_SERVER),
+        'valor' => $_SERVER[$clave] ?? null,
+      ];
+    }
 
-    // Simula el host desde el que se realiza la petición.
+    $this->sesionAnterior = $_SESSION;
+
+    $_SESSION = [
+      'csrf_token' => self::TOKEN,
+    ];
+
     $_SERVER['HTTP_HOST'] = 'localhost:8000';
-
-    // Simula una conexión HTTP, no HTTPS.
     $_SERVER['HTTPS'] = 'off';
-
-    // Simula la cabecera X-CSRF-Token enviada por el navegador.
     $_SERVER['HTTP_X_CSRF_TOKEN'] = self::TOKEN;
-
-    // Simula la cabecera Origin de una petición legítima.
     $_SERVER['HTTP_ORIGIN'] = 'http://localhost:8000';
   }
 
-  /**
-   * Se ejecuta después de cada test.
-   *
-   * Limpia las superglobales para que un test no contamine al siguiente.
-   */
+  /** Restaura los datos que existían antes de la prueba. */
   protected function tearDown(): void
   {
-    unset(
-      $_SERVER['HTTP_HOST'],
-      $_SERVER['HTTPS'],
-      $_SERVER['HTTP_X_CSRF_TOKEN'],
-      $_SERVER['HTTP_ORIGIN']
-    );
+    foreach ($this->servidorAnterior as $clave => $estado) {
+      if ($estado['existe']) {
+        $_SERVER[$clave] = $estado['valor'];
+      } else {
+        unset($_SERVER[$clave]);
+      }
+    }
 
-    $_SESSION = [];
+    $_SESSION = $this->sesionAnterior;
 
     parent::tearDown();
   }
 
-  /**
-   * Comprueba que una petición con token y origen correctos no lanza excepción.
-   */
+  /** Acepta una petición con token y origen correctos. */
   public function testAceptaTokenYOrigenCoincidentes(): void
   {
-    // Indica a PHPUnit que el método no devuelve un valor assertion,
-    // pero que no lanzar CsrfException ya es el resultado esperado.
     $this->expectNotToPerformAssertions();
 
-    // Si el token o el origen fueran inválidos, este método lanzaría CsrfException.
     Csrf::validarPeticion();
   }
 
-  /**
-   * Comprueba que un origen malicioso no se acepta aunque su texto
-   * contenga el host permitido como sufijo.
-   */
+  /** Rechaza un origen que intenta engañar a una comparación por sufijo. */
   public function testRechazaOrigenQueSoloCoincideEnElSufijo(): void
   {
-    // El origen intenta engañar a una comparación por sufijo:
-    // contiene "localhost:8000", pero no es el origen legítimo.
-    $_SERVER['HTTP_ORIGIN'] = 'http://attacker.invalid/path//localhost:8000';
+    $_SERVER['HTTP_ORIGIN'] =
+      'http://attacker.invalid/path//localhost:8000';
 
-    // Se espera que la validación rechace la petición.
     $this->expectException(CsrfException::class);
 
     Csrf::validarPeticion();
   }
 
-  /**
-   * Comprueba que un origen con ruta adicional se rechaza.
-   *
-   * Un Origin válido debe ser solo esquema, host y puerto:
-   * http://localhost:8000, no http://localhost:8000/path.
-   */
+  /** Rechaza un Origin con una ruta adicional. */
   public function testRechazaOrigenConRuta(): void
   {
     $_SERVER['HTTP_ORIGIN'] = 'http://localhost:8000/path';
@@ -108,11 +97,7 @@ final class CsrfTest extends TestCase
     Csrf::validarPeticion();
   }
 
-  /**
-   * Comprueba que no se acepta un cambio de esquema.
-   *
-   * El test simula HTTP, pero envía un Origin HTTPS; deben coincidir.
-   */
+  /** Rechaza HTTPS cuando el servidor se está simulando como HTTP. */
   public function testRechazaOrigenConEsquemaDiferente(): void
   {
     $_SERVER['HTTP_ORIGIN'] = 'https://localhost:8000';
@@ -122,16 +107,65 @@ final class CsrfTest extends TestCase
     Csrf::validarPeticion();
   }
 
-  /**
-   * Comprueba que una petición sin cabecera X-CSRF-Token se rechaza,
-   * aunque el origen sea válido.
-   */
+  /** Rechaza una petición que no envía la cabecera del token. */
   public function testRechazaTokenAusente(): void
   {
-    // Elimina la cabecera simulada para comprobar el caso de petición sin token.
     unset($_SERVER['HTTP_X_CSRF_TOKEN']);
 
     $this->expectException(CsrfException::class);
+
+    Csrf::validarPeticion();
+  }
+
+  /** Rechaza un token distinto al almacenado en la sesión. */
+  public function testRechazaTokenIncorrecto(): void
+  {
+    $_SERVER['HTTP_X_CSRF_TOKEN'] = 'token-incorrecto';
+
+    $this->expectException(CsrfException::class);
+
+    Csrf::validarPeticion();
+  }
+
+  /** Rechaza la petición si no existe un token guardado en la sesión. */
+  public function testRechazaTokenAusenteEnSesion(): void
+  {
+    unset($_SESSION['csrf_token']);
+
+    $this->expectException(CsrfException::class);
+
+    Csrf::validarPeticion();
+  }
+
+  /** Rechaza otro host aunque coincidan el esquema y el puerto. */
+  public function testRechazaHostDiferente(): void
+  {
+    $_SERVER['HTTP_ORIGIN'] = 'http://attacker.invalid:8000';
+
+    $this->expectException(CsrfException::class);
+
+    Csrf::validarPeticion();
+  }
+
+  /** Rechaza otro puerto aunque coincidan el esquema y el host. */
+  public function testRechazaPuertoDiferente(): void
+  {
+    $_SERVER['HTTP_ORIGIN'] = 'http://localhost:8001';
+
+    $this->expectException(CsrfException::class);
+
+    Csrf::validarPeticion();
+  }
+
+  /**
+   * Documenta la política actual:
+   * Origin puede faltar, pero el token sigue siendo obligatorio.
+   */
+  public function testAceptaTokenValidoSinCabeceraOrigin(): void
+  {
+    unset($_SERVER['HTTP_ORIGIN']);
+
+    $this->expectNotToPerformAssertions();
 
     Csrf::validarPeticion();
   }

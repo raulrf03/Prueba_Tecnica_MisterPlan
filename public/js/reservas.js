@@ -206,7 +206,7 @@
 
       acciones.append(botonConfirmar, botonCancelar);
     }
-    
+
     celdaGestionar.append(acciones);
 
     return fila;
@@ -219,7 +219,7 @@
       const fila = document.createElement('tr');
       const celda = agregarCelda(fila, 'No hay reservas que coincidan con los filtros.');
 
-      celda.colSpan = 8;
+      celda.colSpan = 9;
       fragmento.append(fila);
     } else {
       reservas.forEach((reserva) => {

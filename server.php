@@ -12,24 +12,24 @@ declare(strict_types=1);
 $publicDir = realpath(__DIR__ . '/public');
 
 if ($publicDir === false) {
-    http_response_code(500);
+  http_response_code(500);
 
-    echo 'No se ha encontrado el directorio público.';
+  echo 'No se ha encontrado el directorio público.';
 
-    exit;
+  exit;
 }
 
 $rutaSolicitada = parse_url(
-    $_SERVER['REQUEST_URI'] ?? '/',
-    PHP_URL_PATH
+  $_SERVER['REQUEST_URI'] ?? '/',
+  PHP_URL_PATH
 );
 
 if (!is_string($rutaSolicitada)) {
-    http_response_code(400);
+  http_response_code(400);
 
-    echo 'Ruta de petición no válida.';
+  echo 'Ruta de petición no válida.';
 
-    exit;
+  exit;
 }
 
 // Normaliza también el archivo solicitado antes de comprobar su ubicación.
@@ -40,13 +40,13 @@ $rutaNormalizada = realpath($publicDir . $rutaSolicitada);
 $prefijoPublico = $publicDir . DIRECTORY_SEPARATOR;
 
 if (
-    $rutaSolicitada !== '/'
-    && $rutaNormalizada !== false
-    && str_starts_with($rutaNormalizada, $prefijoPublico)
-    && is_file($rutaNormalizada)
+  $rutaSolicitada !== '/'
+  && $rutaNormalizada !== false
+  && str_starts_with($rutaNormalizada, $prefijoPublico)
+  && is_file($rutaNormalizada)
 ) {
-    // Deja que el servidor de PHP atienda el archivo público.
-    return false;
+  // Deja que el servidor de PHP atienda el archivo público.
+  return false;
 }
 
 // Las páginas y endpoints los gestiona la aplicación.

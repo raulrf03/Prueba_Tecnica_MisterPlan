@@ -1,5 +1,4 @@
 <?php
-/** Comprueba los casos válidos y no válidos de cada validador. */
 
 declare(strict_types=1);
 
@@ -9,114 +8,354 @@ use App\Validators\InputValidator;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
-/** Pruebas unitarias de las validaciones de entrada. */
-class InputValidatorTest extends TestCase
+/** Comprueba tipos, formatos y límites sin usar HTTP ni base de datos. */
+final class InputValidatorTest extends TestCase
 {
-  /** Comprueba que el texto se recorta y se devuelve. */
-  public function test_requireString(): void
+  /** Comprueba que requireString devuelve el texto sin espacios exteriores. */
+  public function testTextoValidoEliminaEspaciosExteriores(): void
   {
-    $this->assertSame(
-      'Laura Gómez',
-      InputValidator::requireString(['nombre' => '  Laura Gómez  '], 'nombre')
+    self::assertSame(
+      'Raúl Gómez',
+      InputValidator::requireString(
+        ['nombre' => '  Raúl Gómez  '],
+        'nombre'
+      )
     );
   }
 
-  /** Comprueba la aceptación de un correo válido. */
-  public function test_requireEmail(): void
-  {
-    $this->assertSame(
-      'laura.gomez@example.com',
-      InputValidator::requireEmail(['email' => 'laura.gomez@example.com'], 'email')
-    );
-  }
-
-  /** Comprueba la aceptación de una fecha válida. */
-  public function test_requireDate(): void
-  {
-    $this->assertSame(
-      '2026-11-10',
-      InputValidator::requireDate(['fecha_entrada' => '2026-11-10'], 'fecha_entrada')
-    );
-  }
-
-  /** Comprueba la aceptación de una fecha y hora válidas. */
-  public function test_requireDateTime(): void
-  {
-    $this->assertSame(
-      '2026-10-17 19:30:00',
-      InputValidator::requireDateTime(['fecha_creacion' => '2026-10-17 19:30:00'], 'fecha_creacion')
-    );
-  }
-
-  /** Comprueba la aceptación de un entero positivo. */
-  public function test_requirePositiveInt(): void
-  {
-    $this->assertSame(
-      2,
-      InputValidator::requirePositiveInt(['num_personas' => '2'], 'num_personas')
-    );
-  }
-
-  /** Comprueba la aceptación de un estado permitido. */
-  public function test_requireEstado(): void
-  {
-    $this->assertSame(
-      'pendiente',
-      InputValidator::requireEstado(['estado' => 'pendiente'], 'estado')
-    );
-  }
-
-  // --- Casos de fallo (uno por método) ---
-
-  /** Rechaza un texto vacío. */
-  public function test_requireString_campo_vacio(): void
+  /** Comprueba que requireString rechaza valores vacíos tras recortarlos. */
+  public function testRechazaTextoCompuestoSoloDeEspacios(): void
   {
     $this->expectException(InvalidArgumentException::class);
-    InputValidator::requireString(['nombre' => ''], 'nombre');
+
+    InputValidator::requireString(
+      ['nombre' => '   '],
+      'nombre'
+    );
   }
 
-  /** Rechaza una dirección de correo no válida. */
-  public function test_requireEmail_invalido(): void
+  /** Comprueba que requireString no acepta arrays como texto. */
+  public function testRechazaUnArrayComoTexto(): void
   {
     $this->expectException(InvalidArgumentException::class);
-    InputValidator::requireEmail(['email' => 'no-es-email'], 'email');
+
+    InputValidator::requireString(
+      ['nombre' => ['Raúl']],
+      'nombre'
+    );
   }
 
-  /** Rechaza una fecha imposible. */
-  public function test_requireDate_fecha_imposible(): void
+  /** Comprueba que requireString no acepta valores booleanos. */
+  public function testRechazaUnBooleanoComoTexto(): void
   {
     $this->expectException(InvalidArgumentException::class);
-    InputValidator::requireDate(['fecha_entrada' => '2026-02-30'], 'fecha_entrada');
+
+    InputValidator::requireString(
+      ['nombre' => true],
+      'nombre'
+    );
   }
 
-  /** Rechaza una fecha sin hora. */
-  public function test_requireDateTime_solo_fecha(): void
+  /** Comprueba que requireString aplica el máximo de caracteres indicado. */
+  public function testRechazaTextoQueSuperaElLimite(): void
   {
     $this->expectException(InvalidArgumentException::class);
-    InputValidator::requireDateTime(['fecha_creacion' => '2026-10-17'], 'fecha_creacion');
+
+    InputValidator::requireString(
+      ['nombre' => 'abcdef'],
+      'nombre',
+      5
+    );
   }
 
-  /** Rechaza una hora sin segundos. */
-  public function test_requireDateTime_sin_segundos(): void
+  /** Comprueba que requireString rechaza bytes nulos en el texto. */
+  public function testRechazaBytesNulosEnTexto(): void
   {
     $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireString(
+      ['nombre' => "Raúl\0Gómez"],
+      'nombre'
+    );
+  }
+
+  /** Comprueba que optionalString devuelve null si el valor falta o queda vacío. */
+  public function testNotasAusentesNulasOVaciasDevuelvenNull(): void
+  {
+    self::assertNull(
+      InputValidator::optionalString([], 'notas')
+    );
+
+    self::assertNull(
+      InputValidator::optionalString(['notas' => null], 'notas')
+    );
+
+    self::assertNull(
+      InputValidator::optionalString(['notas' => '   '], 'notas')
+    );
+  }
+
+  /** Comprueba que optionalString rechaza valores que no sean cadenas. */
+  public function testRechazaUnObjetoComoNotas(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::optionalString(
+      ['notas' => (object) ['texto' => 'Llegada tarde']],
+      'notas'
+    );
+  }
+
+  /** Comprueba que requireEmail conserva una dirección válida. */
+  public function testAceptaUnEmailValido(): void
+  {
+    self::assertSame(
+      'raul@example.com',
+      InputValidator::requireEmail(
+        ['email' => 'raul@example.com'],
+        'email'
+      )
+    );
+  }
+
+  /** Comprueba que requireEmail rechaza direcciones con formato inválido. */
+  public function testRechazaUnEmailInvalido(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireEmail(
+      ['email' => 'correo-no-valido'],
+      'email'
+    );
+  }
+
+  /** Comprueba que requireDate acepta el 29 de febrero de un año bisiesto. */
+  public function testAceptaUnaFechaBisiestaValida(): void
+  {
+    self::assertSame(
+      '2028-02-29',
+      InputValidator::requireDate(
+        ['fecha' => '2028-02-29'],
+        'fecha'
+      )
+    );
+  }
+
+  /** Comprueba que requireDate rechaza una fecha de calendario imposible. */
+  public function testRechazaUnaFechaImposible(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireDate(
+      ['fecha' => '2027-02-29'],
+      'fecha'
+    );
+  }
+
+  /** Comprueba que requireDate exige el formato AAAA-MM-DD. */
+  public function testRechazaUnaFechaConFormatoIncorrecto(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireDate(
+      ['fecha' => '22/10/2026'],
+      'fecha'
+    );
+  }
+
+  /** Comprueba que requireDateTime acepta una fecha y hora con segundos. */
+  public function testAceptaUnaFechaYHoraValidas(): void
+  {
+    self::assertSame(
+      '2026-10-22 20:30:00',
+      InputValidator::requireDateTime(
+        ['fecha' => '2026-10-22 20:30:00'],
+        'fecha'
+      )
+    );
+  }
+
+  /** Comprueba que requireDateTime rechaza horas fuera del rango válido. */
+  public function testRechazaUnaHoraImposible(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
     InputValidator::requireDateTime(
-      ['fecha_creacion' => '2026-10-17 19:30'],
-      'fecha_creacion'
+      ['fecha' => '2026-10-22 25:30:00'],
+      'fecha'
     );
   }
 
-  /** Rechaza el valor cero. */
-  public function test_requirePositiveInt_cero(): void
+  /** Comprueba que requirePositiveInt acepta enteros y cadenas dentro del límite. */
+  public function testAceptaEnterosPositivosComoNumeroOTexto(): void
   {
-    $this->expectException(InvalidArgumentException::class);
-    InputValidator::requirePositiveInt(['num_personas' => '0'], 'num_personas');
+    self::assertSame(
+      2,
+      InputValidator::requirePositiveInt(
+        ['personas' => 2],
+        'personas',
+        255
+      )
+    );
+
+    self::assertSame(
+      255,
+      InputValidator::requirePositiveInt(
+        ['personas' => '255'],
+        'personas',
+        255
+      )
+    );
   }
 
-  /** Rechaza un estado que no está permitido. */
-  public function test_requireEstado_invalido(): void
+  /** Comprueba que requirePositiveInt rechaza el cero. */
+  public function testRechazaCeroComoEnteroPositivo(): void
   {
     $this->expectException(InvalidArgumentException::class);
-    InputValidator::requireEstado(['estado' => 'pagada'], 'estado');
+
+    InputValidator::requirePositiveInt(
+      ['personas' => 0],
+      'personas',
+      255
+    );
+  }
+
+  /** Comprueba que requirePositiveInt aplica el máximo indicado. */
+  public function testRechazaPersonasPorEncimaDelLimite(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requirePositiveInt(
+      ['personas' => 256],
+      'personas',
+      255
+    );
+  }
+
+  /** Comprueba que requirePositiveInt no convierte booleanos a enteros. */
+  public function testRechazaUnBooleanoComoEntero(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requirePositiveInt(
+      ['personas' => true],
+      'personas'
+    );
+  }
+
+  /** Comprueba que requirePositiveInt rechaza floats aunque no tengan decimales. */
+  public function testRechazaUnFloatAunqueNoTengaFraccion(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requirePositiveInt(
+      ['personas' => 2.0],
+      'personas'
+    );
+  }
+
+  /** Comprueba la normalización a dos decimales sin usar coma flotante. */
+  public function testNormalizaImportesSinConvertirlosAFloat(): void
+  {
+    self::assertSame(
+      '0.00',
+      InputValidator::requireAmount(
+        ['importe' => '0'],
+        'importe'
+      )
+    );
+
+    self::assertSame(
+      '300.00',
+      InputValidator::requireAmount(
+        ['importe' => 300],
+        'importe'
+      )
+    );
+
+    self::assertSame(
+      '300.50',
+      InputValidator::requireAmount(
+        ['importe' => '300.5'],
+        'importe'
+      )
+    );
+
+    self::assertSame(
+      '99999999.99',
+      InputValidator::requireAmount(
+        ['importe' => '99999999.99'],
+        'importe'
+      )
+    );
+  }
+
+  /** Comprueba que requireAmount rechaza importes negativos. */
+  public function testRechazaUnImporteNegativo(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireAmount(
+      ['importe' => '-0.01'],
+      'importe'
+    );
+  }
+
+  /** Comprueba que requireAmount admite como máximo dos posiciones decimales. */
+  public function testRechazaImportesConMasDeDosDecimales(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireAmount(
+      ['importe' => '100.123'],
+      'importe'
+    );
+  }
+
+  /** Comprueba que requireAmount respeta el límite de DECIMAL(10,2). */
+  public function testRechazaImportesFueraDelLimite(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireAmount(
+      ['importe' => '100000000.00'],
+      'importe'
+    );
+  }
+
+  /** Comprueba que requireAmount rechaza valores enviados como float. */
+  public function testRechazaImportesEnComaFlotante(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireAmount(
+      ['importe' => 100.50],
+      'importe'
+    );
+  }
+
+  /** Comprueba que requireEstado acepta los tres estados definidos. */
+  public function testAceptaLosEstadosConocidos(): void
+  {
+    foreach (['pendiente', 'confirmada', 'cancelada'] as $estado) {
+      self::assertSame(
+        $estado,
+        InputValidator::requireEstado(
+          ['estado' => $estado],
+          'estado'
+        )
+      );
+    }
+  }
+
+  /** Comprueba que requireEstado rechaza valores fuera de la lista permitida. */
+  public function testRechazaUnEstadoDesconocido(): void
+  {
+    $this->expectException(InvalidArgumentException::class);
+
+    InputValidator::requireEstado(
+      ['estado' => 'borrada'],
+      'estado'
+    );
   }
 }

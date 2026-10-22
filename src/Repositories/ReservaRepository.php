@@ -8,6 +8,7 @@ use App\Database\Database;
 use DateTimeImmutable;
 use PDO;
 use Throwable;
+use App\Services\ReservaEstadoService;
 
 final class ReservaRepository
 {
@@ -182,44 +183,75 @@ final class ReservaRepository
       return $reservaId;
     } catch (Throwable $e) {
       // Evita conservar una reserva sin su evento si cualquiera de las escrituras falla.
-      $this->conexion->rollBack();
+      if ($this->conexion->inTransaction()) {
+        $this->conexion->rollBack();
+      }
 
       throw $e;
     }
   }
 
-  /** Actualiza el estado y registra el cambio; devuelve null si la reserva no existe. */
+  /**
+   * Bloquea la reserva, valida la transición y guarda el estado
+   * junto con su evento dentro de la misma transacción.
+   */
   public function cambiarEstado(int $id, string $nuevoEstado): ?array
   {
-    $reserva = $this->obtenerPorId($id);
-
-    if ($reserva === null) {
-      return null;
-    }
-
-    if ($reserva['estado'] === $nuevoEstado) {
-      // No se duplica un evento cuando el estado solicitado ya está aplicado.
-      return $reserva;
-    }
-
     $this->conexion->beginTransaction();
 
     try {
+      // La lectura que decide el cambio debe estar dentro de la transacción.
       $sentencia = $this->conexion->prepare(
-        'UPDATE reserva
-                SET estado = :estado
-                WHERE id = :id'
+        'SELECT id, nombre_huesped, email_huesped, alojamiento,
+                    fecha_entrada, fecha_salida, num_personas,
+                    importe_total, estado, notas, fecha_creacion
+            FROM reserva
+            WHERE id = :id
+            FOR UPDATE'
       );
 
-      $sentencia->execute([
+      $sentencia->execute(['id' => $id]);
+
+      $reserva = $sentencia->fetch(PDO::FETCH_ASSOC);
+
+      if ($reserva === false) {
+        $this->conexion->commit();
+
+        return null;
+      }
+
+      $requiereCambio = ReservaEstadoService::requiereCambio(
+        $reserva['estado'],
+        $nuevoEstado
+      );
+
+      if (!$requiereCambio) {
+        // Repetir la operación no duplica eventos.
+        $this->conexion->commit();
+
+        return $reserva;
+      }
+
+      $actualizacion = $this->conexion->prepare(
+        'UPDATE reserva
+            SET estado = :estado
+            WHERE id = :id'
+      );
+
+      $actualizacion->execute([
         'estado' => $nuevoEstado,
         'id' => $id,
       ]);
 
       [$tipoEvento, $descripcion] = match ($nuevoEstado) {
-        'confirmada' => ['confirmacion', 'Reserva confirmada por el alojamiento.'],
-        'cancelada' => ['cancelacion', 'Reserva cancelada.'],
-        default => ['modificacion', 'Estado de la reserva actualizado.'],
+        'confirmada' => [
+          'confirmacion',
+          'Reserva confirmada por el alojamiento.',
+        ],
+        'cancelada' => [
+          'cancelacion',
+          'Reserva cancelada.',
+        ],
       };
 
       $this->registrarEvento(
@@ -229,12 +261,16 @@ final class ReservaRepository
         (new DateTimeImmutable())->format('Y-m-d H:i:s')
       );
 
+      // Ya conocemos el único campo que ha cambiado.
+      $reserva['estado'] = $nuevoEstado;
+
       $this->conexion->commit();
 
-      return $this->obtenerPorId($id);
+      return $reserva;
     } catch (Throwable $e) {
-      // Mantiene sincronizados el estado de la reserva y su historial.
-      $this->conexion->rollBack();
+      if ($this->conexion->inTransaction()) {
+        $this->conexion->rollBack();
+      }
 
       throw $e;
     }

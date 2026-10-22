@@ -1,4 +1,5 @@
 <?php
+
 /** Carga las variables de entorno y devuelve la configuración de la base de datos. */
 
 declare(strict_types=1);

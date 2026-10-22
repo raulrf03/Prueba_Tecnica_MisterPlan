@@ -35,6 +35,7 @@ final class Csrf
     $origen = $_SERVER['HTTP_ORIGIN'] ?? null;
     $hostPermitido = $_SERVER['HTTP_HOST'] ?? '';
 
+    // Origin puede faltar en clientes no navegador; el token sigue siendo obligatorio.
     $origenValido = $origen === null || self::esOrigenPermitido($origen, $hostPermitido);
 
     if (!$tokenValido || !$origenValido) {
@@ -44,6 +45,7 @@ final class Csrf
 
   private static function esOrigenPermitido(string $origen, string $hostPermitido): bool
   {
+    // Un Origin solo admite esquema, host y puerto; no una ruta ni credenciales.
     $partesOrigen = parse_url($origen);
     $partesHost = parse_url('//' . $hostPermitido);
 
