@@ -43,7 +43,7 @@
 
       <div class="detalle__campo">
         <dt>Alojamiento</dt>
-        <dd>{{ reserva.alojamiento }}</dd>
+        <dd>{{ reserva.nombre_alojamiento }}</dd>
       </div>
 
       <div class="detalle__campo">
@@ -64,7 +64,7 @@
       <div class="detalle__campo">
         <dt>Importe total</dt>
         <dd class="detalle__importe">
-          {{ reserva.importe_total|number_format(2, ',', '.') }} €
+          {{ reserva.importe|number_format(2, ',', '.') }} €
         </dd>
       </div>
 
@@ -112,10 +112,10 @@
       {% for evento in eventos %}
         <li class="timeline__evento">
           <div class="timeline__cabecera">
-            <strong>{{ evento.tipo_evento|capitalize }}</strong>
+            <strong>{{ evento.tipo|capitalize }}</strong>
 
-            <time datetime="{{ evento.fecha_evento|date('Y-m-d\\TH:i:s') }}">
-              {{ evento.fecha_evento|date('d/m/Y H:i') }}
+            <time datetime="{{ evento.fecha_creacion|date('Y-m-d\\TH:i:s') }}">
+              {{ evento.fecha_creacion|date('d/m/Y H:i') }}
             </time>
           </div>
 

@@ -167,9 +167,9 @@ final class ReservaApiController
         'email_huesped'
       );
 
-      $alojamiento = InputValidator::requireString(
+      $nombreAlojamiento = InputValidator::requireString(
         $datos,
-        'alojamiento',
+        'nombre_alojamiento',
         120
       );
 
@@ -189,9 +189,9 @@ final class ReservaApiController
         255
       );
 
-      $importeTotal = InputValidator::requireAmount(
+      $importe = InputValidator::requireAmount(
         $datos,
-        'importe_total'
+        'importe'
       );
 
       $notas = InputValidator::optionalString(
@@ -220,11 +220,11 @@ final class ReservaApiController
       $reservaId = $repositorio->crear([
         'nombre_huesped' => $nombreHuesped,
         'email_huesped' => $emailHuesped,
-        'alojamiento' => $alojamiento,
+        'nombre_alojamiento' => $nombreAlojamiento,
         'fecha_entrada' => $fechaEntrada,
         'fecha_salida' => $fechaSalida,
         'num_personas' => $numPersonas,
-        'importe_total' => $importeTotal,
+        'importe' => $importe,
         'estado' => 'pendiente',
         'notas' => $notas,
         'fecha_creacion' => $ahora->format('Y-m-d H:i:s'),

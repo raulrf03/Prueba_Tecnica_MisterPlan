@@ -164,11 +164,11 @@
     fila.dataset.reservaId = String(reserva.id);
 
     agregarCelda(fila, reserva.nombre_huesped);
-    agregarCelda(fila, reserva.alojamiento);
+    agregarCelda(fila, reserva.nombre_alojamiento);
     agregarCelda(fila, formatearFecha(reserva.fecha_entrada));
     agregarCelda(fila, formatearFecha(reserva.fecha_salida));
     agregarCelda(fila, reserva.num_personas);
-    agregarCelda(fila, formatoImporte.format(Number(reserva.importe_total)));
+    agregarCelda(fila, formatoImporte.format(Number(reserva.importe)));
     agregarCelda(fila, reserva.estado);
 
     // Columna «Ver».
@@ -294,11 +294,11 @@
         cabecera.className = 'timeline__cabecera';
 
         const tipo = document.createElement('strong');
-        tipo.textContent = capitalizar(evento.tipo_evento);
+        tipo.textContent = capitalizar(evento.tipo);
 
         const fecha = document.createElement('time');
-        fecha.dateTime = String(evento.fecha_evento ?? '').replace(' ', 'T');
-        fecha.textContent = formatearFechaHora(evento.fecha_evento);
+        fecha.dateTime = String(evento.fecha_creacion ?? '').replace(' ', 'T');
+        fecha.textContent = formatearFechaHora(evento.fecha_creacion);
 
         const descripcion = document.createElement('p');
         descripcion.textContent = String(evento.descripcion ?? '');
@@ -455,15 +455,15 @@
       const datos = {
         nombre_huesped: String(campos.get('nombre_huesped') ?? '').trim(),
         email_huesped: String(campos.get('email_huesped') ?? '').trim(),
-        alojamiento: String(campos.get('alojamiento') ?? '').trim(),
+        nombre_alojamiento: String(campos.get('nombre_alojamiento') ?? '').trim(),
         fecha_entrada: String(campos.get('fecha_entrada') ?? ''),
         fecha_salida: String(campos.get('fecha_salida') ?? ''),
         num_personas: Number(campos.get('num_personas')),
-        importe_total: String(campos.get('importe_total') ?? ''),
+        importe: String(campos.get('importe') ?? ''),
         notas: String(campos.get('notas') ?? '').trim(),
       };
 
-      if (!datos.nombre_huesped || !datos.email_huesped || !datos.alojamiento) {
+      if (!datos.nombre_huesped || !datos.email_huesped || !datos.nombre_alojamiento) {
         throw new Error('Los campos obligatorios no pueden contener solo espacios.');
       }
 

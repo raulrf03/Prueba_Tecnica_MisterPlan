@@ -100,14 +100,14 @@
         {% for reserva in reservas %}
           <tr data-reserva-id="{{ reserva.id }}">
             <td>{{ reserva.nombre_huesped }}</td>
-            <td>{{ reserva.alojamiento }}</td>
+            <td>{{ reserva.nombre_alojamiento }}</td>
             <td>{{ reserva.fecha_entrada|date('d/m/Y') }}</td>
             <td>{{ reserva.fecha_salida|date('d/m/Y') }}</td>
             <td>{{ reserva.num_personas }}</td>
             <td>
-              {{ reserva.importe_total|number_format(2, ',', '.') }} €
+              {{ reserva.importe|number_format(2, ',', '.') }} €
             </td>
-            <td>{{ reserva.estado }}</td>
+            <td>{{ reserva.estado|capitalize }}</td>
             <td>
               <a
                 href="/reservas/{{ reserva.id }}"

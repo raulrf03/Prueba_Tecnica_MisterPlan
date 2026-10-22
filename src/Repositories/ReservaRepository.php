@@ -24,9 +24,9 @@ final class ReservaRepository
   public function obtenerTodas(): array
   {
     $sentencia = $this->conexion->prepare(
-      'SELECT id, nombre_huesped, email_huesped, alojamiento,
+      'SELECT id, nombre_huesped, email_huesped, nombre_alojamiento,
                     fecha_entrada, fecha_salida, num_personas,
-                    importe_total, estado, notas, fecha_creacion
+                  importe, estado, notas, fecha_creacion
             FROM reserva
             ORDER BY fecha_entrada ASC, id ASC'
     );
@@ -50,9 +50,9 @@ final class ReservaRepository
   public function obtenerPorId(int $id): ?array
   {
     $sentencia = $this->conexion->prepare(
-      'SELECT id, nombre_huesped, email_huesped, alojamiento,
+      'SELECT id, nombre_huesped, email_huesped, nombre_alojamiento,
                     fecha_entrada, fecha_salida, num_personas,
-                    importe_total, estado, notas, fecha_creacion
+                  importe, estado, notas, fecha_creacion
             FROM reserva
             WHERE id = :id'
     );
@@ -68,10 +68,10 @@ final class ReservaRepository
   public function obtenerEventosPorReservaId(int $id): array
   {
     $sentencia = $this->conexion->prepare(
-      'SELECT id, reserva_id, tipo_evento, descripcion, fecha_evento
+      'SELECT id, reserva_id, tipo, descripcion, fecha_creacion
             FROM reserva_evento
             WHERE reserva_id = :id
-            ORDER BY fecha_evento ASC, id ASC'
+        ORDER BY fecha_creacion ASC, id ASC'
     );
 
     $sentencia->execute(['id' => $id]);
@@ -107,9 +107,9 @@ final class ReservaRepository
       $parametros['huesped'] = '%' . $filtros['huesped'] . '%';
     }
 
-    $sql = 'SELECT id, nombre_huesped, email_huesped, alojamiento,
+    $sql = 'SELECT id, nombre_huesped, email_huesped, nombre_alojamiento,
                       fecha_entrada, fecha_salida, num_personas,
-                      importe_total, estado, notas, fecha_creacion
+                importe, estado, notas, fecha_creacion
                 FROM reserva';
 
     if ($condiciones !== []) {
@@ -134,22 +134,22 @@ final class ReservaRepository
         'INSERT INTO reserva (
                     nombre_huesped,
                     email_huesped,
-                    alojamiento,
+                    nombre_alojamiento,
                     fecha_entrada,
                     fecha_salida,
                     num_personas,
-                    importe_total,
+                    importe,
                     estado,
                     notas,
                     fecha_creacion
                 ) VALUES (
                     :nombre_huesped,
                     :email_huesped,
-                    :alojamiento,
+                    :nombre_alojamiento,
                     :fecha_entrada,
                     :fecha_salida,
                     :num_personas,
-                    :importe_total,
+                    :importe,
                     :estado,
                     :notas,
                     :fecha_creacion
@@ -159,11 +159,11 @@ final class ReservaRepository
       $sentencia->execute([
         'nombre_huesped' => $datos['nombre_huesped'],
         'email_huesped' => $datos['email_huesped'],
-        'alojamiento' => $datos['alojamiento'],
+        'nombre_alojamiento' => $datos['nombre_alojamiento'],
         'fecha_entrada' => $datos['fecha_entrada'],
         'fecha_salida' => $datos['fecha_salida'],
         'num_personas' => $datos['num_personas'],
-        'importe_total' => $datos['importe_total'],
+        'importe' => $datos['importe'],
         'estado' => $datos['estado'],
         'notas' => $datos['notas'],
         'fecha_creacion' => $datos['fecha_creacion'],
@@ -202,9 +202,9 @@ final class ReservaRepository
     try {
       // La lectura que decide el cambio debe estar dentro de la transacción.
       $sentencia = $this->conexion->prepare(
-        'SELECT id, nombre_huesped, email_huesped, alojamiento,
+        'SELECT id, nombre_huesped, email_huesped, nombre_alojamiento,
                     fecha_entrada, fecha_salida, num_personas,
-                    importe_total, estado, notas, fecha_creacion
+            importe, estado, notas, fecha_creacion
             FROM reserva
             WHERE id = :id
             FOR UPDATE'
@@ -243,7 +243,7 @@ final class ReservaRepository
         'id' => $id,
       ]);
 
-      [$tipoEvento, $descripcion] = match ($nuevoEstado) {
+      [$tipo, $descripcion] = match ($nuevoEstado) {
         'confirmada' => [
           'confirmacion',
           'Reserva confirmada por el alojamiento.',
@@ -256,7 +256,7 @@ final class ReservaRepository
 
       $this->registrarEvento(
         $id,
-        $tipoEvento,
+        $tipo,
         $descripcion,
         (new DateTimeImmutable())->format('Y-m-d H:i:s')
       );
@@ -279,29 +279,29 @@ final class ReservaRepository
   /** Inserta un evento dentro de la transacción activa del repositorio. */
   private function registrarEvento(
     int $reservaId,
-    string $tipoEvento,
+    string $tipo,
     string $descripcion,
-    string $fechaEvento
+    string $fechaCreacion
   ): void {
     $sentencia = $this->conexion->prepare(
       'INSERT INTO reserva_evento (
                 reserva_id,
-                tipo_evento,
+                tipo,
                 descripcion,
-                fecha_evento
+                fecha_creacion
             ) VALUES (
                 :reserva_id,
-                :tipo_evento,
+                :tipo,
                 :descripcion,
-                :fecha_evento
+                :fecha_creacion
             )'
     );
 
     $sentencia->execute([
       'reserva_id' => $reservaId,
-      'tipo_evento' => $tipoEvento,
+      'tipo' => $tipo,
       'descripcion' => $descripcion,
-      'fecha_evento' => $fechaEvento,
+      'fecha_creacion' => $fechaCreacion,
     ]);
   }
 }
