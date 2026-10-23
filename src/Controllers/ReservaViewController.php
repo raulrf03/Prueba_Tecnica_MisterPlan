@@ -50,6 +50,7 @@ final class ReservaViewController
 
         echo $twig->render('errores/404.html.twig', [
           'mensaje' => 'La reserva solicitada no existe.',
+          'csrf_token' => Csrf::obtenerToken(),
         ]);
 
         return;

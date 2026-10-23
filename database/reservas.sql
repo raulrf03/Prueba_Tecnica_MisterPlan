@@ -232,7 +232,4 @@ VALUES (
         '2026-08-18 16:00:00'
     );
 
-    show DATABASES;
-
-    select * from reserva_evento;
     

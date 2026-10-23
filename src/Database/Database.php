@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace App\Database;
 
 use PDO;
+use RuntimeException;
 
 class Database
 {
@@ -30,11 +31,31 @@ class Database
       $database['charset']
     );
 
-    self::$connection = new PDO($dsn, $database['user'], $database['password'], [
+    $options = [
       PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
       PDO::ATTR_EMULATE_PREPARES => false,
-    ]);
+    ];
+
+    $sslCa = $database['ssl_ca'] ?? null;
+
+    if ($sslCa !== null) {
+      if (!is_file($sslCa) || !is_readable($sslCa)) {
+        throw new RuntimeException(
+          'El certificado CA de MySQL no existe o no se puede leer.'
+        );
+      }
+
+      $options[\Pdo\Mysql::ATTR_SSL_CA] = $sslCa;
+      $options[\Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
+
+    self::$connection = new PDO(
+      $dsn,
+      $database['user'],
+      $database['password'],
+      $options
+    );
 
     return self::$connection;
   }

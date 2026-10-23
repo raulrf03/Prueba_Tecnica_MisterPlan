@@ -173,7 +173,7 @@ final class ReservaRepository
 
       $this->registrarEvento(
         $reservaId,
-        'creacion',
+        'creación',
         'Reserva creada por ' . $datos['nombre_huesped'] . '.',
         $datos['fecha_creacion']
       );
@@ -245,11 +245,11 @@ final class ReservaRepository
 
       [$tipo, $descripcion] = match ($nuevoEstado) {
         'confirmada' => [
-          'confirmacion',
+          'confirmación',
           'Reserva confirmada por el alojamiento.',
         ],
         'cancelada' => [
-          'cancelacion',
+          'cancelación',
           'Reserva cancelada.',
         ],
       };
@@ -261,7 +261,6 @@ final class ReservaRepository
         (new DateTimeImmutable())->format('Y-m-d H:i:s')
       );
 
-      // Ya conocemos el único campo que ha cambiado.
       $reserva['estado'] = $nuevoEstado;
 
       $this->conexion->commit();

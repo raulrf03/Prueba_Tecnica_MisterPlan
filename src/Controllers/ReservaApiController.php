@@ -320,6 +320,7 @@ final class ReservaApiController
       );
     }
   }
+
   private function validarId(string $valor): int
   {
     if (!ctype_digit($valor) || (int) $valor < 1) {

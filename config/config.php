@@ -32,5 +32,6 @@ return [
     'user' => $requiredEnv('DB_USER'),
     'password' => $requiredEnv('DB_PASSWORD'),
     'charset' => 'utf8mb4',
+    'ssl_ca' => $getEnv('DB_SSL_CA'),
   ],
 ];
