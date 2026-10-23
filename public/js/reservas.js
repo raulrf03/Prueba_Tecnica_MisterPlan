@@ -25,12 +25,14 @@
     currency: 'EUR',
   });
 
+  /** Muestra un mensaje y asigna el tipo usado para presentarlo. */
   function mostrarMensaje(texto, tipo = 'informacion') {
     mensaje.textContent = texto;
     mensaje.dataset.tipo = tipo;
     mensaje.hidden = false;
   }
 
+  /** Convierte errores de red o de la aplicación en texto para la interfaz. */
   function obtenerMensajeError(error) {
     if (error instanceof TypeError) {
       return 'No se ha podido conectar con el servidor. Comprueba la conexión.';
@@ -39,6 +41,7 @@
     return error instanceof Error ? error.message : 'Se ha producido un error inesperado.';
   }
 
+  /** Bloquea controles y marca como ocupados los elementos en proceso. */
   function establecerCarga(cargando) {
     ocupado = cargando;
 
@@ -101,6 +104,7 @@
     return contenido;
   }
 
+  /** Construye la consulta con los filtros cuyo valor no está vacío. */
   function obtenerParametros() {
     const parametros = new URLSearchParams();
     const datos = new FormData(formulario);
@@ -117,6 +121,7 @@
     return parametros;
   }
 
+  /** Rechaza rangos donde la fecha inicial sea posterior a la final. */
   function validarRango(parametros) {
     const fechaDesde = parametros.get('fecha_desde');
     const fechaHasta = parametros.get('fecha_hasta');
@@ -126,6 +131,7 @@
     }
   }
 
+  /** Convierte una fecha ISO al formato día/mes/año para mostrarla. */
   function formatearFecha(valor) {
     const partes = String(valor ?? '').split('-');
 
@@ -136,6 +142,7 @@
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
   }
 
+  /** Formatea una fecha y hora del servidor para mostrarla en pantalla. */
   function formatearFechaHora(valor) {
     const texto = String(valor ?? '');
     const [fecha, hora] = texto.split(' ');
@@ -143,12 +150,14 @@
     return hora ? `${formatearFecha(fecha)} ${hora.slice(0, 5)}` : texto;
   }
 
+  /** Pone en mayúscula la primera letra del valor recibido. */
   function capitalizar(valor) {
     const texto = String(valor ?? '');
 
     return texto.charAt(0).toUpperCase() + texto.slice(1);
   }
 
+  /** Añade una celda de texto a la fila y devuelve el elemento creado. */
   function agregarCelda(fila, texto) {
     const celda = document.createElement('td');
 
@@ -159,6 +168,7 @@
     return celda;
   }
 
+  /** Construye la fila de una reserva con sus datos y acciones disponibles. */
   function crearFila(reserva) {
     const fila = document.createElement('tr');
     fila.dataset.reservaId = String(reserva.id);
@@ -169,7 +179,7 @@
     agregarCelda(fila, formatearFecha(reserva.fecha_salida));
     agregarCelda(fila, reserva.num_personas);
     agregarCelda(fila, formatoImporte.format(Number(reserva.importe)));
-    agregarCelda(fila, reserva.estado);
+    agregarCelda(fila, capitalizar(reserva.estado));
 
     // Columna «Ver».
     const celdaVer = agregarCelda(fila, '');
@@ -212,6 +222,7 @@
     return fila;
   }
 
+  /** Sustituye las filas de la tabla por la lista recibida. */
   function renderizarReservas(reservas) {
     const fragmento = document.createDocumentFragment();
 
@@ -249,6 +260,7 @@
     return contenido.datos.length;
   }
 
+  /** Valida los filtros, actualiza el listado y muestra el resultado. */
   async function cargarReservas() {
     if (ocupado) {
       return;
@@ -273,6 +285,7 @@
     }
   }
 
+  /** Sustituye el historial visible por los eventos recibidos. */
   function renderizarHistorial(eventos) {
     const fragmento = document.createDocumentFragment();
 
@@ -312,6 +325,7 @@
     historialEventos.replaceChildren(fragmento);
   }
 
+  /** Actualiza el estado y el historial tras cambiar una reserva. */
   function actualizarDetalle(reserva, eventos, boton) {
     estadoReserva.textContent = capitalizar(reserva.estado);
 
@@ -329,6 +343,7 @@
     }
   }
 
+  /** Confirma, envía y refleja el cambio de estado de una reserva. */
   async function cambiarEstadoReserva(boton, nuevoEstado) {
     if (ocupado) {
       return;
@@ -427,12 +442,14 @@
     }
   }
 
+  /** Muestra un mensaje asociado al resultado de crear una reserva. */
   function mostrarMensajeCreacion(texto, tipo = 'informacion') {
     mensajeCreacion.textContent = texto;
     mensajeCreacion.dataset.tipo = tipo;
     mensajeCreacion.hidden = false;
   }
 
+  /** Valida y envía el formulario, y actualiza el listado tras crearla. */
   async function crearReserva(evento) {
     evento.preventDefault();
 

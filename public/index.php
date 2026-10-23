@@ -45,7 +45,7 @@ if (Router::esRutaApi($ruta)) {
 
   if (preg_match('#^/api/reservas/(\d+)$#', $ruta, $coincidencias) === 1) {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-      $controlador->obtener((int) $coincidencias[1]);
+      $controlador->obtener($coincidencias[1]);
 
       exit;
     }
@@ -59,7 +59,7 @@ if (Router::esRutaApi($ruta)) {
   if (preg_match('#^/api/reservas/(\d+)/estado$#', $ruta, $coincidencias) === 1) {
     // El cambio de estado solo se permite mediante PATCH.
     if ($_SERVER['REQUEST_METHOD'] === 'PATCH') {
-      $controlador->cambiarEstado((int) $coincidencias[1]);
+      $controlador->cambiarEstado($coincidencias[1]);
 
       exit;
     }

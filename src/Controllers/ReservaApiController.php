@@ -43,8 +43,10 @@ final class ReservaApiController
   }
 
   /** Devuelve una reserva junto con su historial de eventos. */
-  public function obtener(int $id): void
+  public function obtener(string $id): void
   {
+    $id = $this->validarId($id);
+
     try {
       $repositorio = new ReservaRepository();
 
@@ -258,8 +260,10 @@ final class ReservaApiController
   }
 
   /** Cambia el estado de una reserva y devuelve su historial actualizado. */
-  public function cambiarEstado(int $id): void
+  public function cambiarEstado(string $id): void
   {
+    $id = $this->validarId($id);
+
     try {
       // El cambio de estado también es una operación protegida contra CSRF.
       Csrf::validarPeticion();
@@ -316,6 +320,15 @@ final class ReservaApiController
       );
     }
   }
+  private function validarId(string $valor): int
+  {
+    if (!ctype_digit($valor) || (int) $valor < 1) {
+      Router::responderError('Identificador no válido.', 400);
+    }
+
+    return (int) $valor;
+  }
+
   /** Lee un objeto JSON y rechaza cuerpos vacíos, mal formados o de otro tipo. */
   private function leerObjetoJson(): array
   {
