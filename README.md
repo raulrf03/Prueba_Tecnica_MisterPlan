@@ -291,16 +291,20 @@ Con 1.000 reservas por hora, la aplicación necesitaría cambios en varios nivel
 
 ## Despliegue
 
-La aplicación está desplegada en:
+La aplicación está alojada en Alwaysdata y utiliza Aiven para la base de datos MySQL.
+Enlace [rrf-gestion-reservas.alwaysdata.net](https://rrf-gestion-reservas.alwaysdata.net/)
 
-[Abrir la aplicación desplegada](https://rrf-gestion-reservas.alwaysdata.net/)
+### Preparación del despliegue
 
-Para desplegar en producción habría que:
+1. Descargar el proyecto e instalar las dependencias de producción:
 
-- Configurar variables de entorno seguras.
-- Usar HTTPS.
-- Desactivar la visualización de errores de PHP en producción.
-- Crear un usuario MySQL con permisos mínimos.
-- Configurar logs y rotación de logs.
-- Importar el esquema con `database/reservas.sql`.
-- Ejecutar la suite de tests antes del despliegue.
+   ```bash
+   composer install --no-dev --prefer-dist --optimize-autoloader
+   ```
+
+2. Crear la base de datos e importar el esquema y los datos iniciales de `database/reservas.sql`.
+3. Crear un usuario MySQL para la aplicación con permisos `SELECT`, `INSERT` y `UPDATE` sobre la base de datos del proyecto.
+4. Configurar las variables de conexión del `.env` con los datos del entorno de despliegue, sin subir las credenciales al repositorio.
+5. Guardar el certificado CA de Aiven fuera del directorio público y configurar su ruta mediante `DB_SSL_CA`, manteniendo activada la verificación del certificado del servidor.
+6. Configurar el servidor web para utilizar `public/` como raíz pública y dirigir las rutas de la aplicación a `index.php` mediante `public/.htaccess`.
+7. Comprobar el listado, los filtros, la creación de reservas, los cambios de estado y el historial.
