@@ -2,7 +2,22 @@
 
 Aplicación web y API REST para gestionar reservas de alojamiento: creación, consulta, filtrado, confirmación, cancelación e historial de cambios de estado.
 
-El proyecto está construido con PHP nativo, MySQL, Twig y una arquitectura en capas, sin utilizar un framework. Incluye validación de entrada, consultas preparadas, control CSRF, logging técnico y pruebas automatizadas.
+El proyecto está construido con PHP nativo, MySQL, Twig y una arquitectura en capas, sin utilizar un framework. Incluye validación de entrada, consultas preparadas, control CSRF y pruebas automatizadas.
+
+## Índice
+
+- [Índice](#índice)
+- [Funcionalidades](#funcionalidades)
+- [Tecnologías usadas](#tecnologías-usadas)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Requisitos](#requisitos)
+- [Puesta en marcha local](#puesta-en-marcha-local)
+- [Endpoints principales](#endpoints-principales)
+- [Pruebas](#pruebas)
+- [Decisiones de diseño](#decisiones-de-diseño)
+- [Qué mejoraría con más tiempo](#qué-mejoraría-con-más-tiempo)
+- [Escalabilidad: 1.000 reservas por hora](#escalabilidad-1000-reservas-por-hora)
+- [Despliegue](#despliegue)
 
 ## Funcionalidades
 
@@ -17,7 +32,7 @@ El proyecto está construido con PHP nativo, MySQL, Twig y una arquitectura en c
 
 ## Tecnologías usadas
 
-- PHP 8.4
+- PHP 8.4.4 (recomendado 8.4.27 o superior, que corrige CVE-2026-109618 y CVE-2026-109619)
 - MySQL 9.7.2
 - PDO
 - Twig 3.30.0
@@ -30,12 +45,18 @@ El proyecto está construido con PHP nativo, MySQL, Twig y una arquitectura en c
 
 ```text
 public/          Punto de entrada público y recursos estáticos
+config/          Configuración de la aplicación
+server.php       Enrutador para el servidor de desarrollo PHP
 src/
   Controllers/   Controladores HTTP y API
+  Database/      Conexión y configuración de base de datos
+  Exceptions/    Excepciones de la aplicación
   Repositories/  Acceso a datos mediante PDO
+  Routes/        Enrutamiento HTTP
+  Security/      Protección CSRF y utilidades de seguridad
   Services/      Reglas de negocio y transiciones de estado
   Validators/    Validación y saneamiento de entrada
-  Database/      Conexión y configuración de base de datos
+  View/          Configuración y renderizado de vistas
 templates/       Vistas Twig
 tests/
   Smoke/         Comprobaciones rápidas de entorno y clases
@@ -55,20 +76,10 @@ database/
 Comprueba que tienes la extensión necesaria:
 
 ```bash
-php -r "echo extension_loaded('pdo_mysql') ? 'pdo_mysql disponible' : 'Falta pdo_mysql';"
+php -m | grep -i pdo_mysql
 ```
 
-Si falta, abre el `php.ini` indicado por:
-
-```bash
-php --ini
-```
-
-Y descomenta o añade:
-
-```ini
-extension=pdo_mysql
-```
+Si no aparece, habilita `extension=pdo_mysql` en el `php.ini` activo (`php --ini`).
 
 ## Puesta en marcha local
 
@@ -94,7 +105,7 @@ importa el esquema y los datos:
 mysql -u root -p < database/reservas.sql
 ```
 
-Esto crea la base de datos `reservas`, sus tablas y datos de ejemplo.
+El script crea la base de datos `reservas` con sus tablas y datos de ejemplo.
 
 ### 4. Crear el usuario de aplicación
 
@@ -131,14 +142,15 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=reservas
 DB_USER=reservas_app
-DB_PASSWORD=contraseña
+DB_PASSWORD=contrasena
+DB_SSL_CA=/ruta/certificado/aiven-ca.pem
 ```
 
 El archivo `.env` no debe subirse al repositorio porque contiene credenciales locales. El repositorio incluye `.env.example` como plantilla.
 
 ### 6. Arrancar el servidor
 
-Desde la raíz del proyecto:
+Con MySQL activo, ejecuta desde la raíz del proyecto:
 
 ```bash
 php -S localhost:8000 -t public server.php
@@ -152,7 +164,7 @@ Para consultar el listado de reservas en JSON, visita:
 
 [http://localhost:8000/api/reservas](http://localhost:8000/api/reservas)
 
-Las rutas de la API usan el prefijo `/api`; `/api` por sí sola no es un endpoint.
+Las rutas usan el prefijo `/api`; `/api` por sí sola no es un endpoint.
 
 ## Endpoints principales
 
@@ -163,27 +175,61 @@ Las rutas de la API usan el prefijo `/api`; `/api` por sí sola no es un endpoin
 | `POST`  | `/api/reservas`             | Crea una reserva                   |
 | `PATCH` | `/api/reservas/{id}/estado` | Cambia el estado de una reserva    |
 
-El endpoint `GET /api/reservas` admite los filtros `estado`, `fecha_desde`,
-`fecha_hasta` y `huesped`.
+`GET /api/reservas` admite los filtros `estado`, `fecha_desde`, `fecha_hasta` y `huesped`.
 
-Ejemplo del cuerpo JSON enviado a `POST /api/reservas`:
+Las operaciones `POST` y `PATCH` requieren la cookie de sesión y el token CSRF.
 
-```json
-{
-  "nombre_huesped": "Ana García",
-  "email_huesped": "ana@example.com",
-  "nombre_alojamiento": "Apartamento Centro",
-  "fecha_entrada": "2026-11-01",
-  "fecha_salida": "2026-11-05",
-  "num_personas": 2,
-  "importe": "320.50",
-  "notas": "Llegada por la tarde"
-}
+### Ejemplos con curl
+
+Ejemplos Bash. Obtén la cookie y el token CSRF de la página principal:
+
+```bash
+BASE_URL=http://localhost:8000
+COOKIE_JAR=$(mktemp)
+
+HTML=$(curl -fsS -c "$COOKIE_JAR" "$BASE_URL/")
+CSRF_TOKEN=$(printf '%s\n' "$HTML" | sed -n 's/.*<meta name="csrf-token" content="\([^"]*\)".*/\1/p')
 ```
 
-En `POST` y `PATCH`, envía la cookie de sesión y el token CSRF en la cabecera
-`X-CSRF-Token`. Puedes obtener el token de la etiqueta
-`meta[name="csrf-token"]` que devuelve una página de la aplicación.
+Consultar reservas filtradas no requiere token CSRF:
+
+```bash
+curl -sS --get "$BASE_URL/api/reservas" \
+  --data-urlencode 'estado=pendiente' \
+  --data-urlencode 'huesped=Ana'
+```
+
+Crear una reserva:
+
+```bash
+curl -i -sS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{
+    "nombre_huesped": "Ana García",
+    "email_huesped": "ana@example.com",
+    "nombre_alojamiento": "Apartamento Centro",
+    "fecha_entrada": "2026-12-01",
+    "fecha_salida": "2026-12-05",
+    "num_personas": 2,
+    "importe": "320.50",
+    "notas": "Llegada por la tarde"
+  }' \
+  "$BASE_URL/api/reservas"
+```
+
+Cambiar el estado de una reserva pendiente (sustituye `1` por su identificador):
+
+```bash
+curl -i -sS -b "$COOKIE_JAR" -c "$COOKIE_JAR" \
+  -X PATCH \
+  -H "X-CSRF-Token: $CSRF_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"estado":"confirmada"}' \
+  "$BASE_URL/api/reservas/1/estado"
+```
+
+Al terminar, elimina el archivo temporal con `rm "$COOKIE_JAR"`.
 
 ## Pruebas
 
@@ -205,18 +251,12 @@ Para ejecutar un test concreto:
 ./vendor/bin/phpunit tests/Unit/InputValidatorTest.php
 ```
 
-```bash
-./vendor/bin/phpunit tests/Unit/DatabaseTest.php
-```
-
-También puedes lanzar los smoke tests de forma individual:
+Los smoke tests se pueden ejecutar por separado:
 
 ```bash
 php tests/Smoke/DatabaseSmoke.php
 php tests/Smoke/InputValidatorSmoke.php
 ```
-
-Los smoke tests comprueban rápidamente que el entorno, la conexión a MySQL y las clases principales funcionan.
 
 ## Decisiones de diseño
 
@@ -229,15 +269,10 @@ El proyecto separa responsabilidades en controladores, servicios, repositorios y
 - **Repositories**: encapsulan el acceso a MySQL mediante PDO y consultas preparadas.
 - **Validators**: centralizan la validación y el saneamiento de datos recibidos.
 
-Esta separación evita que la lógica de negocio quede mezclada con SQL o con el código HTTP, facilita las pruebas y permite cambiar la interfaz o el almacenamiento con menos riesgo.
-
 ### MySQL
 
-Elegí MySQL porque es una base de datos relacional adecuada para reservas: los datos tienen relaciones claras entre reservas, estados y eventos, y se necesitan consultas por fechas, estado y huésped.
-
-La tabla `reserva` almacena la información principal, mientras que
-`reserva_evento` conserva los eventos de creación y los cambios de estado para
-consultar su historial sin sobrescribir eventos anteriores.
+MySQL almacena las reservas y sus eventos relacionados. `reserva_evento` conserva
+el historial de cambios sin sobrescribir eventos anteriores.
 
 ### Seguridad
 

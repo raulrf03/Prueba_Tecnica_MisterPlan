@@ -10,6 +10,9 @@ use App\Controllers\ReservaApiController;
 use App\Controllers\ReservaViewController;
 use App\Routes\Router;
 
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
 header('Content-Type: text/html; charset=utf-8');
 
 $ruta = Router::obtenerRuta();

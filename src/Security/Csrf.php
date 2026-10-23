@@ -8,9 +8,7 @@ final class Csrf
 {
   public static function obtenerToken(): string
   {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-      session_start();
-    }
+    self::iniciarSesion();
 
     if (!isset($_SESSION['csrf_token'])) {
       $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -21,9 +19,7 @@ final class Csrf
 
   public static function validarPeticion(): void
   {
-    if (session_status() !== PHP_SESSION_ACTIVE) {
-      session_start();
-    }
+    self::iniciarSesion();
 
     $tokenEnviado = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
 
@@ -77,5 +73,21 @@ final class Csrf
     return $esquemaOrigen === $esquemaEsperado
       && strcasecmp($partesOrigen['host'], $partesHost['host']) === 0
       && $puertoOrigen === $puertoEsperado;
+  }
+
+  private static function iniciarSesion(): void
+  {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+      return;
+    }
+
+    $parametrosCookie = session_get_cookie_params();
+    $parametrosCookie['secure'] = !empty($_SERVER['HTTPS'])
+      && strtolower((string) $_SERVER['HTTPS']) !== 'off';
+    $parametrosCookie['httponly'] = true;
+    $parametrosCookie['samesite'] = 'Lax';
+
+    session_set_cookie_params($parametrosCookie);
+    session_start();
   }
 }

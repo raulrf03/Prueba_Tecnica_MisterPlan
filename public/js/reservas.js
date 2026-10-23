@@ -181,7 +181,7 @@
     agregarCelda(fila, formatoImporte.format(Number(reserva.importe)));
     agregarCelda(fila, capitalizar(reserva.estado));
 
-    // Columna «Ver».
+    // Columna "Ver".
     const celdaVer = agregarCelda(fila, '');
     const enlace = document.createElement('a');
 
@@ -191,7 +191,7 @@
 
     celdaVer.append(enlace);
 
-    // Columna «Gestionar».
+    // Columna "Gestionar".
     const celdaGestionar = agregarCelda(fila, '');
     const acciones = document.createElement('div');
 

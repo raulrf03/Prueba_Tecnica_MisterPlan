@@ -1,4 +1,4 @@
--- Active: 1792171317899@@127.0.0.1@3306@mysql
+-- Active: 1792171317899@@127.0.0.1@3306@reservas
 -- ==================================================
 -- PROYECTO: RESERVAS DE ALOJAMIENTO
 -- Estructura y datos de ejemplo listos para importar
@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS reserva_evento (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     reserva_id INT UNSIGNED NOT NULL,
     tipo ENUM(
-        'creacion',
-        'confirmacion',
-        'cancelacion',
-        'modificacion'
+        'creación',
+        'confirmación',
+        'cancelación',
+        'modificación'
     ) NOT NULL,
     descripcion VARCHAR(255) NOT NULL,
     fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -164,70 +164,75 @@ INSERT INTO
 VALUES (
         1,
         1,
-        'creacion',
+        'creación',
         'Reserva creada por Laura Gómez.',
         '2026-10-01 09:15:00'
     ),
     (
         2,
         2,
-        'creacion',
+        'creación',
         'Reserva creada por Carlos Ruiz.',
         '2026-10-02 11:30:00'
     ),
     (
         3,
         2,
-        'confirmacion',
+        'confirmación',
         'Reserva confirmada por el alojamiento.',
         '2026-10-03 10:00:00'
     ),
     (
         4,
         3,
-        'creacion',
+        'creación',
         'Reserva creada por Marta López.',
         '2026-09-25 17:45:00'
     ),
     (
         5,
         3,
-        'cancelacion',
+        'cancelación',
         'Reserva cancelada por el huésped.',
         '2026-09-28 14:30:00'
     ),
     (
         6,
         4,
-        'creacion',
+        'creación',
         'Reserva creada por Javier Martín.',
         '2026-09-20 08:00:00'
     ),
     (
         7,
         4,
-        'confirmacion',
+        'confirmación',
         'Reserva confirmada por el alojamiento.',
         '2026-09-21 09:30:00'
     ),
     (
         8,
         5,
-        'creacion',
+        'creación',
         'Reserva creada por Elena Navarro.',
         '2026-10-10 19:20:00'
     ),
     (
         9,
         6,
-        'creacion',
+        'creación',
         'Reserva creada por Sergio Alonso.',
         '2026-08-15 12:10:00'
     ),
     (
         10,
         6,
-        'cancelacion',
+        'cancelación',
         'Reserva cancelada por el huésped.',
         '2026-08-18 16:00:00'
     );
+
+    show DATABASES;
+
+    select * from reserva_evento;
+    

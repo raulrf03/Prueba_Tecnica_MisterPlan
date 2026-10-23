@@ -375,7 +375,7 @@ td {
 .acciones-reserva {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.65rem;
 }
 

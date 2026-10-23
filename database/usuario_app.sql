@@ -5,12 +5,8 @@
 
 USE reservas;
 
-CREATE USER IF NOT EXISTS 'reservas_app' @'localhost' IDENTIFIED BY 'prueba';
+CREATE USER IF NOT EXISTS 'reservas_app' @'localhost' IDENTIFIED BY 'contrasena';
 
-GRANT
-SELECT,
-INSERT
-,
-UPDATE ON reservas.* TO 'reservas_app' @'localhost';
+GRANT SELECT, INSERT, UPDATE ON reservas.* TO 'reservas_app' @'localhost';
 
 FLUSH PRIVILEGES;

@@ -17,10 +17,10 @@ function verificar(string $nombre, callable $callback): void
   global $fallos;
   try {
     $callback();
-    echo "  ✓ {$nombre}" . PHP_EOL;
+    echo "  [OK] {$nombre}" . PHP_EOL;
   } catch (Throwable $e) {
     $fallos++;
-    echo "  ✗ {$nombre} → " . $e->getMessage() . PHP_EOL;
+    echo "  [ERROR] {$nombre} → " . $e->getMessage() . PHP_EOL;
   }
 }
 
